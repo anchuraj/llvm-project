@@ -419,6 +419,9 @@ public:
   bool Pre(const parser::OpenMPDeclareTargetConstruct &);
   void Post(const parser::OpenMPDeclareTargetConstruct &) { PopContext(); }
 
+  bool Pre(const parser::OpenMPScanConstruct &);
+  void Post(const parser::OpenMPScanConstruct &) { PopContext(); }
+  
   bool Pre(const parser::OpenMPThreadprivate &);
   void Post(const parser::OpenMPThreadprivate &) { PopContext(); }
 
@@ -1895,6 +1898,13 @@ bool OmpAttributeVisitor::Pre(const parser::OpenMPDeclareTargetConstruct &x) {
       }
     }
   }
+  return true;
+}
+
+bool OmpAttributeVisitor::Pre(const parser::OpenMPScanConstruct &x) {
+  const auto &scanDirectiveWithClauses{
+      std::get<parser::OmpScanDirectiveWithClauses>(x.t)};
+  PushContext(scanDirectiveWithClauses.source, llvm::omp::Directive::OMPD_scan);
   return true;
 }
 

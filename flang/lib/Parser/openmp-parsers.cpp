@@ -266,6 +266,8 @@ TYPE_PARSER(
         construct<OmpClause>(construct<OmpClause::DynamicAllocators>()) ||
     "ENTER" >> construct<OmpClause>(construct<OmpClause::Enter>(
                    parenthesized(Parser<OmpObjectList>{}))) ||
+    "EXCLUSIVE" >> construct<OmpClause>(construct<OmpClause::Exclusive>(
+                           parenthesized(Parser<OmpObjectList>{}))) ||
     "FILTER" >> construct<OmpClause>(construct<OmpClause::Filter>(
                     parenthesized(scalarIntExpr))) ||
     "FINAL" >> construct<OmpClause>(construct<OmpClause::Final>(
@@ -285,6 +287,8 @@ TYPE_PARSER(
     "IF" >> construct<OmpClause>(construct<OmpClause::If>(
                 parenthesized(Parser<OmpIfClause>{}))) ||
     "INBRANCH" >> construct<OmpClause>(construct<OmpClause::Inbranch>()) ||
+    "INCLUSIVE" >> construct<OmpClause>(construct<OmpClause::Inclusive>(
+                           parenthesized(Parser<OmpObjectList>{}))) ||
     "IS_DEVICE_PTR" >> construct<OmpClause>(construct<OmpClause::IsDevicePtr>(
                            parenthesized(Parser<OmpObjectList>{}))) ||
     "LASTPRIVATE" >> construct<OmpClause>(construct<OmpClause::Lastprivate>(
@@ -670,6 +674,18 @@ TYPE_PARSER(construct<OpenMPBlockConstruct>(
     Parser<OmpBeginBlockDirective>{} / endOmpLine, block,
     Parser<OmpEndBlockDirective>{} / endOmpLine))
 
+
+// OMP SCAN Directive
+TYPE_PARSER(construct<OmpScanDirective>(first(
+    "SCAN" >> pure(llvm::omp::Directive::OMPD_scan))))
+TYPE_PARSER(sourced(construct<OmpScanDirectiveWithClauses>(
+    sourced(Parser<OmpScanDirective>{}), Parser<OmpClauseList>{})))
+
+TYPE_PARSER(construct<OpenMPScanPreBlock>(block))
+TYPE_PARSER(construct<OpenMPScanPostBlock>(block))
+TYPE_PARSER(construct<OpenMPScanConstruct>(
+    Parser<OmpScanDirectiveWithClauses>{} ))
+
 // OMP SECTIONS Directive
 TYPE_PARSER(construct<OmpSectionsDirective>(first(
     "SECTIONS" >> pure(llvm::omp::Directive::OMPD_sections),
@@ -683,14 +699,17 @@ TYPE_PARSER(
                         sourced("END"_tok >> Parser<OmpSectionsDirective>{}),
                         Parser<OmpClauseList>{})))
 
-// OMP SECTION-BLOCK
 
-TYPE_PARSER(construct<OpenMPSectionConstruct>(block))
+// OMP SECTION-BLOCK
 
 TYPE_PARSER(maybe(startOmpLine >> "SECTION"_tok / endOmpLine) >>
     construct<OmpSectionBlocks>(nonemptySeparated(
         construct<OpenMPConstruct>(sourced(Parser<OpenMPSectionConstruct>{})),
         startOmpLine >> "SECTION"_tok / endOmpLine)))
+
+// OMP SECTION-BLOCK
+
+TYPE_PARSER(construct<OpenMPSectionConstruct>(block))
 
 // OMP SECTIONS (OpenMP 5.0 - 2.8.1), PARALLEL SECTIONS (OpenMP 5.0 - 2.13.3)
 TYPE_PARSER(construct<OpenMPSectionsConstruct>(
@@ -701,6 +720,7 @@ TYPE_CONTEXT_PARSER("OpenMP construct"_en_US,
     startOmpLine >>
         withMessage("expected OpenMP construct"_err_en_US,
             first(construct<OpenMPConstruct>(Parser<OpenMPSectionsConstruct>{}),
+                construct<OpenMPConstruct>(Parser<OpenMPScanConstruct>{}),
                 construct<OpenMPConstruct>(Parser<OpenMPLoopConstruct>{}),
                 construct<OpenMPConstruct>(Parser<OpenMPBlockConstruct>{}),
                 // OpenMPBlockConstruct is attempted before

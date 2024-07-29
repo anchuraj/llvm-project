@@ -2338,6 +2338,9 @@ public:
     case llvm::omp::Directive::OMPD_parallel:
       Word("PARALLEL ");
       break;
+    case llvm::omp::Directive::OMPD_scan:
+      Word("SCAN ");
+      break;
     case llvm::omp::Directive::OMPD_single:
       Word("SINGLE ");
       break;
@@ -2585,6 +2588,34 @@ public:
   void Post(const OpenMPThreadprivate &) {
     Put(")\n");
     EndOpenMP();
+  }
+  void Unparse(const OmpScanDirective &x) {
+    switch (x.v) {
+    case llvm::omp::Directive::OMPD_scan:
+      Word("SCAN ");
+      break;
+    default:
+      break;
+    }
+  }
+  void Unparse(const OpenMPScanPreBlock &x) {
+    Walk(x.v, "");
+  }
+  void Unparse(const OpenMPScanPostBlock &x) {
+    Walk(x.v, "");
+  }
+  void Unparse(const OpenMPScanConstruct &x) {
+    //Walk(std::get<OpenMPScanPreBlock>(x.t));
+    BeginOpenMP();
+    Word("!$OMP ");
+    Walk(std::get<OmpScanDirectiveWithClauses>(x.t));
+    Put("\n");
+    EndOpenMP();
+    //Walk(std::get<OpenMPScanPostBlock>(x.t));
+  }
+  void Unparse(const OmpScanDirectiveWithClauses &x) {
+    Walk(std::get<OmpScanDirective>(x.t));
+    Walk(std::get<OmpClauseList>(x.t));
   }
   void Unparse(const OmpSectionsDirective &x) {
     switch (x.v) {

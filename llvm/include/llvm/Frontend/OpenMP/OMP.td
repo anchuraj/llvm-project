@@ -150,6 +150,7 @@ def OMPC_Enter : Clause<"enter"> {
 }
 def OMPC_Exclusive : Clause<"exclusive"> {
   let clangClass = "OMPExclusiveClause";
+  let flangClass = "OmpObjectList";
 }
 def OMPC_Fail : Clause<"fail"> {
   let clangClass = "OMPFailClause";
@@ -204,6 +205,7 @@ def OMPC_Inbranch : Clause<"inbranch"> {
 }
 def OMPC_Inclusive : Clause<"inclusive"> {
   let clangClass = "OMPInclusiveClause";
+  let flangClass = "OmpObjectList";
 }
 def OMPC_Indirect : Clause<"indirect"> {
 }

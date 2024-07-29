@@ -551,6 +551,8 @@ void OmpStructureChecker::CheckSIMDNest(const parser::OpenMPConstruct &c) {
                             break;
                           }
                         }
+                      } else if (beginDir.v == llvm::omp::Directive::OMPD_scan) {
+                        eligibleSIMD = true;
                       }
                     },
                     [&](const parser::OpenMPSimpleStandaloneConstruct &c) {
@@ -574,11 +576,16 @@ void OmpStructureChecker::CheckSIMDNest(const parser::OpenMPConstruct &c) {
                       const auto &beginDir{
                           std::get<parser::OmpLoopDirective>(beginLoopDir.t)};
                       if ((beginDir.v == llvm::omp::Directive::OMPD_simd) ||
-                          (beginDir.v == llvm::omp::Directive::OMPD_do_simd)) {
+                          (beginDir.v == llvm::omp::Directive::OMPD_do_simd) ||
+                          (beginDir.v == llvm::omp::Directive::OMPD_parallel_do_simd)) {
                         eligibleSIMD = true;
                       }
                     },
                     [&](const parser::OpenMPAtomicConstruct &c) {
+                      // Allow `!$OMP ATOMIC`
+                      eligibleSIMD = true;
+                    },
+                    [&](const parser::OpenMPScanConstruct &c) {
                       // Allow `!$OMP ATOMIC`
                       eligibleSIMD = true;
                     },
@@ -983,6 +990,19 @@ void OmpStructureChecker::Enter(const parser::OpenMPSectionsConstruct &x) {
       beginDir.source, llvm::omp::nestedWorkshareErrSet);
 }
 
+void OmpStructureChecker::Enter(const parser::OpenMPScanConstruct &x) {
+  const auto &scanDirWithClauses{
+      std::get<parser::OmpScanDirectiveWithClauses>(x.t)};
+
+  PushContextAndClauseSets(scanDirWithClauses.source, llvm::omp::OMPD_scan);
+  //const auto &sectionBlocks{std::get<parser::OmpSectionBlocks>(x.t)};
+  //for (const parser::OpenMPConstruct &block : sectionBlocks.v) {
+  //  CheckNoBranching(std::get<parser::OpenMPSectionConstruct>(block.u).v,
+  //      beginDir.v, beginDir.source);
+  //}
+  //HasInvalidWorksharingNesting(
+  //    beginDir.source, llvm::omp::nestedWorkshareErrSet);
+}
 void OmpStructureChecker::Leave(const parser::OpenMPSectionsConstruct &) {
   dirContext_.pop_back();
 }
@@ -1012,6 +1032,11 @@ void OmpStructureChecker::Leave(const parser::OmpEndSectionsDirective &x) {
   }
 }
 
+void OmpStructureChecker::Leave(const parser::OpenMPScanConstruct &x) {
+  if (GetContext().directive == llvm::omp::Directive::OMPD_scan) {
+    dirContext_.pop_back();
+  }
+}
 void OmpStructureChecker::CheckThreadprivateOrDeclareTargetVar(
     const parser::OmpObjectList &objList) {
   for (const auto &ompObject : objList.v) {
@@ -2528,6 +2553,7 @@ void OmpStructureChecker::CheckReductionModifier(
     switch (dirCtx.directive) {
     case llvm::omp::Directive::OMPD_do: // worksharing-loop
     case llvm::omp::Directive::OMPD_do_simd: // worksharing-loop simd
+    case llvm::omp::Directive::OMPD_parallel_do_simd: // worksharing-loop parallel do simd`
     case llvm::omp::Directive::OMPD_simd: // "simd"
       break;
     default:

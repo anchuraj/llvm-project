@@ -3669,6 +3669,33 @@ struct OmpClauseList {
   CharBlock source;
 };
 
+struct OpenMPScanPreBlock {
+  WRAPPER_CLASS_BOILERPLATE(OpenMPScanPreBlock, Block);
+  CharBlock source;
+};
+
+struct OpenMPScanPostBlock {
+  WRAPPER_CLASS_BOILERPLATE(OpenMPScanPostBlock, Block);
+  CharBlock source;
+};
+
+struct OmpScanDirective {
+  WRAPPER_CLASS_BOILERPLATE(OmpScanDirective, llvm::omp::Directive);
+  CharBlock source;
+};
+
+struct OmpScanDirectiveWithClauses {
+  TUPLE_CLASS_BOILERPLATE(OmpScanDirectiveWithClauses);
+  std::tuple<OmpScanDirective, OmpClauseList> t;
+  CharBlock source;
+};
+
+struct OpenMPScanConstruct {
+  TUPLE_CLASS_BOILERPLATE(OpenMPScanConstruct);
+  std::tuple<OmpScanDirectiveWithClauses> t;
+  CharBlock source;
+};
+
 // 2.7.2 SECTIONS
 // 2.11.2 PARALLEL SECTIONS
 struct OmpSectionsDirective {
@@ -3716,7 +3743,7 @@ struct OmpBlockDirective {
 };
 
 // 2.10.6 declare-target -> DECLARE TARGET (extended-list) |
-//                          DECLARE TARGET [declare-target-clause[ [,]
+//                          DECLAScan-target-clause[ [,]
 //                                          declare-target-clause]...]
 struct OmpDeclareTargetWithList {
   WRAPPER_CLASS_BOILERPLATE(OmpDeclareTargetWithList, OmpObjectList);
@@ -4022,7 +4049,7 @@ struct OpenMPLoopConstruct {
 struct OpenMPConstruct {
   UNION_CLASS_BOILERPLATE(OpenMPConstruct);
   std::variant<OpenMPStandaloneConstruct, OpenMPSectionsConstruct,
-      OpenMPSectionConstruct, OpenMPLoopConstruct, OpenMPBlockConstruct,
+      OpenMPSectionConstruct, OpenMPScanConstruct, OpenMPLoopConstruct, OpenMPBlockConstruct,
       OpenMPAtomicConstruct, OpenMPDeclarativeAllocate,
       OpenMPExecutableAllocate, OpenMPAllocatorsConstruct,
       OpenMPCriticalConstruct>
