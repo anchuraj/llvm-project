@@ -28,10 +28,12 @@
 #include "flang/Parser/char-block.h"
 #include "flang/Parser/message.h"
 #include "flang/Parser/parse-state.h"
+#include "flang/Parser/dump-parse-tree.h"
 #include "flang/Parser/provenance.h"
 #include "flang/Parser/user-state.h"
 #include <cstring>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <memory>
 #include <optional>
@@ -924,6 +926,7 @@ public:
   std::optional<resultType> Parse(ParseState &state) const {
     const char *start{state.GetLocation()};
     auto result{parser_.Parse(state)};
+    //std::cout << "start" << start<< std::endl;
     if (result) {
       const char *end{state.GetLocation()};
       for (; start < end && start[0] == ' '; ++start) {
@@ -931,7 +934,9 @@ public:
       for (; start < end && end[-1] == ' '; --end) {
       }
       result->source = CharBlock{start, end};
+    Fortran::parser::DumpTree(llvm::outs(), result);
     }
+    
     return result;
   }
 

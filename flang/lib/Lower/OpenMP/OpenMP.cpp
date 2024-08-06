@@ -2573,6 +2573,13 @@ static void genOMP(lower::AbstractConverter &converter, lower::SymMap &symTable,
                    const parser::OpenMPScanConstruct &scanConstruct) {
   TODO(converter.getCurrentLocation(), "OpenMPScan");
 }
+
+static void genOMP(lower::AbstractConverter &converter, lower::SymMap &symTable,
+                   semantics::SemanticsContext &semaCtx,
+                   lower::pft::Evaluation &eval,
+                   const parser::OmpScanDirectiveWithClauses &scanConstruct) {
+  TODO(converter.getCurrentLocation(), "OpenMPScan");
+}
 static void genOMP(lower::AbstractConverter &converter, lower::SymMap &symTable,
                    semantics::SemanticsContext &semaCtx,
                    lower::pft::Evaluation &eval,

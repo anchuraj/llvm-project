@@ -2605,12 +2605,12 @@ public:
     Walk(x.v, "");
   }
   void Unparse(const OpenMPScanConstruct &x) {
-    //Walk(std::get<OpenMPScanPreBlock>(x.t));
-    BeginOpenMP();
-    Word("!$OMP ");
-    Walk(std::get<OmpScanDirectiveWithClauses>(x.t));
-    Put("\n");
-    EndOpenMP();
+    Walk(std::get<OpenMPScanPreBlock>(x.t));
+    //BeginOpenMP();
+    //Word("!$OMP ");
+    //Walk(std::get<OmpScanDirectiveWithClauses>(x.t));
+    //Put("\n");
+    //EndOpenMP();
     //Walk(std::get<OpenMPScanPostBlock>(x.t));
   }
   void Unparse(const OmpScanDirectiveWithClauses &x) {

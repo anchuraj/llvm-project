@@ -676,15 +676,16 @@ TYPE_PARSER(construct<OpenMPBlockConstruct>(
 
 
 // OMP SCAN Directive
-TYPE_PARSER(construct<OmpScanDirective>(first(
-    "SCAN" >> pure(llvm::omp::Directive::OMPD_scan))))
+TYPE_PARSER(construct<OmpScanDirective>(
+    "SCAN" >> pure(llvm::omp::Directive::OMPD_scan)))
 TYPE_PARSER(sourced(construct<OmpScanDirectiveWithClauses>(
-    sourced(Parser<OmpScanDirective>{}), Parser<OmpClauseList>{})))
+    startOmpLine >> sourced(Parser<OmpScanDirective>{}), Parser<OmpClauseList>{} / endOmpLine)))
 
-TYPE_PARSER(construct<OpenMPScanPreBlock>(block))
-TYPE_PARSER(construct<OpenMPScanPostBlock>(block))
+TYPE_PARSER(construct<OpenMPScanPreBlock>(block/Parser<OmpScanDirectiveWithClauses>{}/block) )
+TYPE_PARSER(construct<OpenMPScanPostBlock>(block ))
 TYPE_PARSER(construct<OpenMPScanConstruct>(
-    Parser<OmpScanDirectiveWithClauses>{} ))
+ sourced(Parser<OpenMPScanPreBlock>{})))
+ //sourced(Parser<OmpScanDirectiveWithClauses>{})))
 
 // OMP SECTIONS Directive
 TYPE_PARSER(construct<OmpSectionsDirective>(first(
@@ -701,7 +702,6 @@ TYPE_PARSER(
 
 
 // OMP SECTION-BLOCK
-
 TYPE_PARSER(maybe(startOmpLine >> "SECTION"_tok / endOmpLine) >>
     construct<OmpSectionBlocks>(nonemptySeparated(
         construct<OpenMPConstruct>(sourced(Parser<OpenMPSectionConstruct>{})),
@@ -717,10 +717,10 @@ TYPE_PARSER(construct<OpenMPSectionsConstruct>(
     Parser<OmpSectionBlocks>{}, Parser<OmpEndSectionsDirective>{} / endOmpLine))
 
 TYPE_CONTEXT_PARSER("OpenMP construct"_en_US,
-    startOmpLine >>
+    (startOmpLine >>
         withMessage("expected OpenMP construct"_err_en_US,
-            first(construct<OpenMPConstruct>(Parser<OpenMPSectionsConstruct>{}),
-                construct<OpenMPConstruct>(Parser<OpenMPScanConstruct>{}),
+            first(
+                construct<OpenMPConstruct>(Parser<OpenMPSectionsConstruct>{}),
                 construct<OpenMPConstruct>(Parser<OpenMPLoopConstruct>{}),
                 construct<OpenMPConstruct>(Parser<OpenMPBlockConstruct>{}),
                 // OpenMPBlockConstruct is attempted before
@@ -731,6 +731,7 @@ TYPE_CONTEXT_PARSER("OpenMP construct"_en_US,
                 construct<OpenMPConstruct>(Parser<OpenMPAllocatorsConstruct>{}),
                 construct<OpenMPConstruct>(Parser<OpenMPDeclarativeAllocate>{}),
                 construct<OpenMPConstruct>(Parser<OpenMPCriticalConstruct>{}))))
+                )
 
 // END OMP Block directives
 TYPE_PARSER(

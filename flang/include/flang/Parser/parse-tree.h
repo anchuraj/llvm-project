@@ -196,6 +196,8 @@ struct BlockConstruct; // R1107
 struct ChangeTeamConstruct; // R1111
 struct CriticalConstruct; // R1116
 struct DoConstruct; // R1119
+struct DoBlock; 
+struct OpenMPScanConstruct; 
 struct LabelDoStmt; // R1121
 struct ConcurrentHeader; // R1125
 struct EndDoStmt; // R1132
@@ -526,6 +528,7 @@ struct ExecutableConstruct {
       common::Indirection<CriticalConstruct>,
       Statement<common::Indirection<LabelDoStmt>>,
       Statement<common::Indirection<EndDoStmt>>,
+      common::Indirection<OpenMPConstruct>,
       common::Indirection<DoConstruct>, common::Indirection<IfConstruct>,
       common::Indirection<SelectRankConstruct>,
       common::Indirection<SelectTypeConstruct>,
@@ -533,7 +536,6 @@ struct ExecutableConstruct {
       common::Indirection<CompilerDirective>,
       common::Indirection<OpenACCConstruct>,
       common::Indirection<AccEndCombinedDirective>,
-      common::Indirection<OpenMPConstruct>,
       common::Indirection<OmpEndLoopDirective>,
       common::Indirection<CUFKernelDoConstruct>>
       u;
@@ -2303,6 +2305,10 @@ struct NonLabelDoStmt {
 // R1132 end-do-stmt -> END DO [do-construct-name]
 WRAPPER_CLASS(EndDoStmt, std::optional<Name>);
 
+struct DoBlock {
+  UNION_CLASS_BOILERPLATE(DoBlock);
+  std::variant<Block, common::Indirection<OpenMPScanConstruct>> u;
+};
 // R1131 end-do -> end-do-stmt | continue-stmt
 
 // R1119 do-construct -> do-stmt block end-do
@@ -3692,7 +3698,7 @@ struct OmpScanDirectiveWithClauses {
 
 struct OpenMPScanConstruct {
   TUPLE_CLASS_BOILERPLATE(OpenMPScanConstruct);
-  std::tuple<OmpScanDirectiveWithClauses> t;
+  std::tuple<OpenMPScanPreBlock> t;
   CharBlock source;
 };
 
@@ -4048,8 +4054,8 @@ struct OpenMPLoopConstruct {
 
 struct OpenMPConstruct {
   UNION_CLASS_BOILERPLATE(OpenMPConstruct);
-  std::variant<OpenMPStandaloneConstruct, OpenMPSectionsConstruct,
-      OpenMPSectionConstruct, OpenMPScanConstruct, OpenMPLoopConstruct, OpenMPBlockConstruct,
+  std::variant<OpenMPScanConstruct, OmpScanDirectiveWithClauses, OpenMPStandaloneConstruct, OpenMPSectionsConstruct,
+      OpenMPSectionConstruct, OpenMPLoopConstruct, OpenMPBlockConstruct,
       OpenMPAtomicConstruct, OpenMPDeclarativeAllocate,
       OpenMPExecutableAllocate, OpenMPAllocatorsConstruct,
       OpenMPCriticalConstruct>

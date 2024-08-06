@@ -235,7 +235,8 @@ TYPE_PARSER(construct<EndCriticalStmt>(recovery(
 // R1120 do-stmt -> nonlabel-do-stmt | label-do-stmt
 TYPE_CONTEXT_PARSER("DO construct"_en_US,
     construct<DoConstruct>(
-        statement(Parser<NonLabelDoStmt>{}) / EnterNonlabelDoConstruct{}, block,
+        statement(Parser<NonLabelDoStmt>{}) / EnterNonlabelDoConstruct{}, 
+        construct<DoBlock>(block),
         statement(Parser<EndDoStmt>{}) / LeaveDoConstruct{}))
 
 // R1125 concurrent-header ->

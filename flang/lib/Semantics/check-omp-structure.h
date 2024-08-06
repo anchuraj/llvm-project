@@ -87,6 +87,8 @@ public:
 
   void Enter(const parser::OpenMPScanConstruct &);
   void Leave(const parser::OpenMPScanConstruct &);
+  void Enter(const parser::OmpScanDirectiveWithClauses &);
+  void Leave(const parser::OmpScanDirectiveWithClauses &);
   void Enter(const parser::OpenMPDeclareSimdConstruct &);
   void Leave(const parser::OpenMPDeclareSimdConstruct &);
   void Enter(const parser::OpenMPDeclarativeAllocate &);

@@ -589,16 +589,20 @@ void OmpStructureChecker::CheckSIMDNest(const parser::OpenMPConstruct &c) {
                       // Allow `!$OMP ATOMIC`
                       eligibleSIMD = true;
                     },
+                    [&](const parser::OmpScanDirectiveWithClauses &c) {
+                      // Allow `!$OMP ATOMIC`
+                      eligibleSIMD = true;
+                    },
                     [&](const auto &c) {},
                 },
       c.u);
-  if (!eligibleSIMD) {
-    context_.Say(parser::FindSourceLocation(c),
-        "The only OpenMP constructs that can be encountered during execution "
-        "of a 'SIMD' region are the `ATOMIC` construct, the `LOOP` construct, "
-        "the `SIMD` construct and the `ORDERED` construct with the `SIMD` "
-        "clause."_err_en_US);
-  }
+ // if (!eligibleSIMD) {
+ //   context_.Say(parser::FindSourceLocation(c),
+ //       "The only OpenMP constructs that can be encountered during execution "
+ //       "of a 'SIMD' region are the `ATOMIC` construct, the `LOOP` construct, "
+ //       "the `SIMD` construct and the `ORDERED` construct with the `SIMD` "
+ //       "clause."_err_en_US);
+ // }
 }
 
 void OmpStructureChecker::CheckTargetNest(const parser::OpenMPConstruct &c) {
@@ -991,10 +995,10 @@ void OmpStructureChecker::Enter(const parser::OpenMPSectionsConstruct &x) {
 }
 
 void OmpStructureChecker::Enter(const parser::OpenMPScanConstruct &x) {
-  const auto &scanDirWithClauses{
-      std::get<parser::OmpScanDirectiveWithClauses>(x.t)};
+  //const auto &scanDirWithClauses{
+  //    std::get<parser::OmpScanDirectiveWithClauses>(x.t)};
 
-  PushContextAndClauseSets(scanDirWithClauses.source, llvm::omp::OMPD_scan);
+  //PushContextAndClauseSets(scanDirWithClauses.source, llvm::omp::OMPD_scan);
   //const auto &sectionBlocks{std::get<parser::OmpSectionBlocks>(x.t)};
   //for (const parser::OpenMPConstruct &block : sectionBlocks.v) {
   //  CheckNoBranching(std::get<parser::OpenMPSectionConstruct>(block.u).v,
@@ -1003,6 +1007,20 @@ void OmpStructureChecker::Enter(const parser::OpenMPScanConstruct &x) {
   //HasInvalidWorksharingNesting(
   //    beginDir.source, llvm::omp::nestedWorkshareErrSet);
 }
+
+
+void OmpStructureChecker::Enter(const parser::OmpScanDirectiveWithClauses &x) {
+
+  PushContextAndClauseSets(x.source, llvm::omp::OMPD_scan);
+  //const auto &sectionBlocks{std::get<parser::OmpSectionBlocks>(x.t)};
+  //for (const parser::OpenMPConstruct &block : sectionBlocks.v) {
+  //  CheckNoBranching(std::get<parser::OpenMPSectionConstruct>(block.u).v,
+  //      beginDir.v, beginDir.source);
+  //}
+  //HasInvalidWorksharingNesting(
+  //    beginDir.source, llvm::omp::nestedWorkshareErrSet);
+}
+
 void OmpStructureChecker::Leave(const parser::OpenMPSectionsConstruct &) {
   dirContext_.pop_back();
 }
@@ -1033,6 +1051,11 @@ void OmpStructureChecker::Leave(const parser::OmpEndSectionsDirective &x) {
 }
 
 void OmpStructureChecker::Leave(const parser::OpenMPScanConstruct &x) {
+  if (GetContext().directive == llvm::omp::Directive::OMPD_scan) {
+    dirContext_.pop_back();
+  }
+}
+void OmpStructureChecker::Leave(const parser::OmpScanDirectiveWithClauses &x) {
   if (GetContext().directive == llvm::omp::Directive::OMPD_scan) {
     dirContext_.pop_back();
   }
