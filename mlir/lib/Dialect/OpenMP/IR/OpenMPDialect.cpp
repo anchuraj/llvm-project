@@ -2614,6 +2614,16 @@ LogicalResult PrivateClauseOp::verify() {
 // Spec 5.2: Masked construct (10.5)
 //===----------------------------------------------------------------------===//
 
+void ScanOp::build(OpBuilder &builder, OperationState &state,
+                     const ScanOperands &clauses) {
+  ScanOp::build(builder, state, clauses.inclusiveVars, clauses.exclusiveVars);
+}
+
+
+//===----------------------------------------------------------------------===//
+// Spec 5.2: Masked construct (10.5)
+//===----------------------------------------------------------------------===//
+
 void MaskedOp::build(OpBuilder &builder, OperationState &state,
                      const MaskedOperands &clauses) {
   MaskedOp::build(builder, state, clauses.filteredThreadId);
