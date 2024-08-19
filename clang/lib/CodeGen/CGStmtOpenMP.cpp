@@ -3905,6 +3905,7 @@ static bool emitWorksharingDirective(CodeGenFunction &CGF,
     };
     const auto &&FirstGen = [&S, HasCancel, EKind](CodeGenFunction &CGF) {
       CodeGenFunction::OMPCancelStackRAII CancelRegion(CGF, EKind, HasCancel);
+      S.dump();
       (void)CGF.EmitOMPWorksharingLoop(S, S.getEnsureUpperBound(),
                                        emitForLoopBounds,
                                        emitDispatchForLoopBounds);

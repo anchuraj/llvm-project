@@ -609,6 +609,44 @@ bool ClauseProcessor::processAligned(
       });
 }
 
+
+bool ClauseProcessor::processInclusive(
+    mlir::Location currentLocation,
+    mlir::omp::InclusiveClauseOps &result) const {
+  return findRepeatableClause<omp::clause::Inclusive>(
+      [&](const omp::clause::Inclusive &clause, const parser::CharBlock &) {
+        for (const Object &object : clause.v) {
+          semantics::Symbol *sym = object.sym();
+          mlir::Value symVal = converter.getSymbolAddress(*sym);
+          auto declOp = symVal.getDefiningOp<hlfir::DeclareOp>();
+          if (!declOp)
+            fir::emitFatalError(currentLocation,
+                                "COPYPRIVATE is supported only in HLFIR mode");
+          symVal = declOp.getBase();
+          mlir::Value cpVar = symVal;
+          result.inclusiveVars.push_back(cpVar);
+        }
+      });
+}
+
+bool ClauseProcessor::processExclusive(
+    mlir::Location currentLocation,
+    mlir::omp::ExclusiveClauseOps &result) const {
+  return findRepeatableClause<omp::clause::Exclusive>(
+      [&](const omp::clause::Exclusive &clause, const parser::CharBlock &) {
+        for (const Object &object : clause.v) {
+          semantics::Symbol *sym = object.sym();
+          mlir::Value symVal = converter.getSymbolAddress(*sym);
+          auto declOp = symVal.getDefiningOp<hlfir::DeclareOp>();
+          if (!declOp)
+            fir::emitFatalError(currentLocation,
+                                "COPYPRIVATE is supported only in HLFIR mode");
+          symVal = declOp.getBase();
+          mlir::Value cpVar = symVal;
+          result.exclusiveVars.push_back(cpVar);
+        }
+      });
+}
 bool ClauseProcessor::processAllocate(
     mlir::omp::AllocateClauseOps &result) const {
   return findRepeatableClause<omp::clause::Allocate>(

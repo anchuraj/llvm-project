@@ -686,9 +686,12 @@ void ReductionProcessor::addDeclareReduction(
     llvm::SmallVectorImpl<const semantics::Symbol *> *reductionSymbols) {
   fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
 
-  if (std::get<std::optional<omp::clause::Reduction::ReductionModifier>>(
-          reduction.t))
-    TODO(currentLocation, "Reduction modifiers are not supported");
+  if (auto redMod = std::get<std::optional<omp::clause::Reduction::ReductionModifier>>(
+          reduction.t)) {
+    if(redMod != omp::clause::Reduction::ReductionModifier::Inscan)
+      TODO(currentLocation, "Reduction modifiers are not supported");
+
+  }
 
   mlir::omp::DeclareReductionOp decl;
   const auto &redOperatorList{

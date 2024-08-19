@@ -1233,6 +1233,16 @@ static void genTargetEnterExitUpdateDataClauses(
   }
 }
 
+static void genScanClauses(
+    lower::AbstractConverter &converter, semantics::SemanticsContext &semaCtx,
+    const List<Clause> &clauses,
+    mlir::Location loc,
+    mlir::omp::ScanOperands &clauseOps) {
+  ClauseProcessor cp(converter, semaCtx, clauses);
+  cp.processInclusive(loc, clauseOps);
+  cp.processExclusive(loc, clauseOps);
+}
+
 static void genTaskClauses(lower::AbstractConverter &converter,
                            semantics::SemanticsContext &semaCtx,
                            lower::StatementContext &stmtCtx,
@@ -1402,6 +1412,20 @@ genMaskedOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
       OpWithBodyGenInfo(converter, symTable, semaCtx, loc, eval,
                         llvm::omp::Directive::OMPD_masked),
       queue, item, clauseOps);
+}
+
+static mlir::omp::ScanOp
+genScanOp(
+    lower::AbstractConverter &converter, lower::SymMap &symTable,
+    semantics::SemanticsContext &semaCtx, mlir::Location loc,
+    const ConstructQueue &queue, ConstructQueue::const_iterator item) {
+
+  mlir::omp::ScanOperands clauseOps;
+  genScanClauses(converter, semaCtx,
+                                      item->clauses, loc,  clauseOps);
+
+  return converter.getFirOpBuilder().create<mlir::omp::ScanOp>(
+      converter.getCurrentLocation(), clauseOps);
 }
 
 static mlir::omp::MasterOp
@@ -2200,7 +2224,7 @@ static void genOMPDispatch(lower::AbstractConverter &converter,
     genStandaloneParallel(converter, symTable, semaCtx, eval, loc, queue, item);
     break;
   case llvm::omp::Directive::OMPD_scan:
-    TODO(loc, "Unhandled directive " + llvm::omp::getOpenMPDirectiveName(dir));
+    genScanOp(converter, symTable, semaCtx, loc, queue, item);
     break;
   case llvm::omp::Directive::OMPD_section:
     llvm_unreachable("genOMPDispatch: OMPD_section");

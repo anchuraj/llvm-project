@@ -512,6 +512,10 @@ public:
     }
     const auto &objList{std::get<parser::OmpObjectList>(x.v.t)};
     ResolveOmpObjectList(objList, Symbol::Flag::OmpReduction);
+    
+    if (std::get<std::optional<parser::OmpReductionClause::ReductionModifier>>(x.v.t) == parser::OmpReductionClause::ReductionModifier::Inscan) {
+      ResolveOmpObjectList(objList, Symbol::Flag::OmpReductionInScan);
+    }
     return false;
   }
 

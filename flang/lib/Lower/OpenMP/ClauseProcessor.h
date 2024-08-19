@@ -94,6 +94,8 @@ public:
 
   // 'Repeatable' clauses: They can appear multiple times in the clause list.
   bool processAligned(mlir::omp::AlignedClauseOps &result) const;
+  bool processInclusive(mlir::Location currentLocation, mlir::omp::InclusiveClauseOps &result) const;
+  bool processExclusive(mlir::Location currentLocation, mlir::omp::ExclusiveClauseOps &result) const;
   bool processAllocate(mlir::omp::AllocateClauseOps &result) const;
   bool processCopyin() const;
   bool processCopyprivate(mlir::Location currentLocation,

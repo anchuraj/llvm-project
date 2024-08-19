@@ -879,8 +879,8 @@ def OMP_Reverse : Directive<"reverse"> {
 }
 def OMP_Scan : Directive<"scan"> {
   let allowedClauses = [
-    VersionedClause<OMPC_Exclusive, 50>,
-    VersionedClause<OMPC_Inclusive, 50>,
+    VersionedClause<OMPC_Exclusive>,
+    VersionedClause<OMPC_Inclusive>,
   ];
   let association = AS_Separating;
   let category = CA_Subsidiary;
