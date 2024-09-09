@@ -284,6 +284,34 @@ class OpenMP_DoacrossClauseSkip<
 def OpenMP_DoacrossClause : OpenMP_DoacrossClauseSkip<>;
 
 //===----------------------------------------------------------------------===//
+// V5.2: [5.4.7] `exclusive` clause
+//===----------------------------------------------------------------------===//
+
+class OpenMP_ExclusiveClauseSkip<
+    bit traits = false, bit arguments = false, bit assemblyFormat = false,
+    bit description = false, bit extraClassDeclaration = false
+  > : OpenMP_Clause</*isRequired=*/false, traits, arguments, assemblyFormat,
+                    description, extraClassDeclaration> {
+  let arguments = (ins
+    Variadic<AnyType>:$exclusive_vars
+  );
+
+  let assemblyFormat = [{
+    `exclusive` `(` $exclusive_vars `:` type($exclusive_vars) `)`
+  }];
+
+  let description = [{
+    The exclusive clause is used on a separating directive that separates a
+    structured block into two structured block sequences. If it
+    is specified, the input phase excludes the preceding structured block 
+    sequence and instead includes the following structured block sequence, 
+    while the scan phase includes the preceding structured block sequence.
+  }];
+}
+
+def OpenMP_ExclusiveClause : OpenMP_ExclusiveClauseSkip<>;
+
+//===----------------------------------------------------------------------===//
 // V5.2: [10.5.1] `filter` clause
 //===----------------------------------------------------------------------===//
 
@@ -478,6 +506,33 @@ class OpenMP_InReductionClauseSkip<
 }
 
 def OpenMP_InReductionClause : OpenMP_InReductionClauseSkip<>;
+
+//===----------------------------------------------------------------------===//
+// V5.2: [5.4.7] `inclusive` clause
+//===----------------------------------------------------------------------===//
+
+class OpenMP_InclusiveClauseSkip<
+    bit traits = false, bit arguments = false, bit assemblyFormat = false,
+    bit description = false, bit extraClassDeclaration = false
+  > : OpenMP_Clause</*isRequired=*/false, traits, arguments, assemblyFormat,
+                    description, extraClassDeclaration> {
+  let arguments = (ins
+    Variadic<AnyType>:$inclusive_vars
+  );
+
+  let assemblyFormat = [{
+    `inclusive` `(` $inclusive_vars `:` type($inclusive_vars) `)`
+  }];
+
+  let description = [{
+    The inclusive clause is used on a separating directive that separates a
+    structured block into two structured block sequences. If it is specified,
+    the input phase includes the preceding structured block sequence and the
+    scan phase includes the following structured block sequence.
+  }];
+}
+
+def OpenMP_InclusiveClause : OpenMP_InclusiveClauseSkip<>;
 
 //===----------------------------------------------------------------------===//
 // V5.2: [5.4.7] `is_device_ptr` clause
@@ -977,6 +1032,7 @@ class OpenMP_ReductionClauseSkip<
   ];
 
   let arguments = (ins
+    OptionalAttr<ReductionModifierAttr>:$reduction_modifier_attr,
     Variadic<OpenMP_PointerLikeType>:$reduction_vars,
     OptionalAttr<DenseBoolArrayAttr>:$reduction_byref,
     OptionalAttr<SymbolRefArrayAttr>:$reduction_syms
@@ -984,7 +1040,7 @@ class OpenMP_ReductionClauseSkip<
 
   let assemblyFormat = [{
     `reduction` `(`
-      custom<ReductionVarList>($reduction_vars, type($reduction_vars),
+      custom<ReductionModAndVarList>($reduction_modifier_attr, $reduction_vars, type($reduction_vars),
                                $reduction_byref, $reduction_syms) `)`
   }];
 

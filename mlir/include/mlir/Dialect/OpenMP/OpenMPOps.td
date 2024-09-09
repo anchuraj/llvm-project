@@ -168,7 +168,7 @@ def ParallelOp : OpenMP_Op<"parallel", traits = [
                 $allocator_vars, type($allocator_vars)
               ) `)`
           | `proc_bind` `(` custom<ClauseAttr>($proc_bind_kind) `)`
-    ) custom<ParallelRegion>($region, $reduction_vars, type($reduction_vars),
+    ) custom<ParallelRegion>($region, $reduction_modifier_attr, $reduction_vars, type($reduction_vars),
                              $reduction_byref, $reduction_syms, $private_vars,
                              type($private_vars), $private_syms) attr-dict
   }];
@@ -422,7 +422,7 @@ def WsloopOp : OpenMP_Op<"wsloop", traits = [
           |`private` `(`
                 custom<PrivateList>(
                   $private_vars, type($private_vars), $private_syms) `)`
-    ) custom<Wsloop>($region, $reduction_vars, type($reduction_vars),
+    ) custom<Wsloop>($region, $reduction_modifier_attr, $reduction_vars, type($reduction_vars),
                      $reduction_byref, $reduction_syms) attr-dict
   }];
 
@@ -1197,6 +1197,25 @@ def OrderedRegionOp : OpenMP_Op<"ordered.region", clauses = [
 
   let builders = [
     OpBuilder<(ins CArg<"const OrderedRegionOperands &">:$clauses)>
+  ];
+
+  let hasVerifier = 1;
+}
+
+def ScanOp : OpenMP_Op<"scan", traits = [
+    AttrSizedOperandSegments
+  ], clauses = [OpenMP_InclusiveClause, OpenMP_ExclusiveClause]> {
+  let summary = "scan directive";
+  let description = [{
+    The scan directive allows to specify scan reduction. Scan directive
+    should be enclosed with in a parent directive along with which , a
+    reduction clause with `InScan` modifier must be specified. Scan directive
+    allows to separate code blocks to input phase and scan phase in the region
+    enclosed by the parent.
+  }] # clausesDescription;
+
+  let builders = [
+    OpBuilder<(ins CArg<"const ScanOperands &">:$clauses)>
   ];
 
   let hasVerifier = 1;
