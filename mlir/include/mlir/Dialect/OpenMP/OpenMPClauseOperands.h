@@ -188,6 +188,7 @@ struct ProcBindClauseOps {
 };
 
 struct ReductionClauseOps {
+  ReductionModifierAttr reductionMod;
   llvm::SmallVector<Value> reductionVars;
   llvm::SmallVector<bool> reductionByref;
   llvm::SmallVector<Attribute> reductionSyms;
@@ -209,6 +210,7 @@ struct SimdlenClauseOps {
 };
 
 struct TaskReductionClauseOps {
+  ReductionModifierAttr taskReductionMod;
   llvm::SmallVector<Value> taskReductionVars;
   llvm::SmallVector<bool> taskReductionByref;
   llvm::SmallVector<Attribute> taskReductionSyms;

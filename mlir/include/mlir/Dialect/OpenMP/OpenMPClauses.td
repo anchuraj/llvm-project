@@ -977,6 +977,8 @@ class OpenMP_ReductionClauseSkip<
   ];
 
   let arguments = (ins
+    
+    OptionalAttr<ReductionModifierAttr>:$reduction_modifier_attr,
     Variadic<OpenMP_PointerLikeType>:$reduction_vars,
     OptionalAttr<DenseBoolArrayAttr>:$reduction_byref,
     OptionalAttr<SymbolRefArrayAttr>:$reduction_syms
@@ -1108,6 +1110,7 @@ class OpenMP_TaskReductionClauseSkip<
   ];
 
   let arguments = (ins
+    OptionalAttr<ReductionModifierAttr>:$reduction_modifier_attr,
     Variadic<OpenMP_PointerLikeType>:$task_reduction_vars,
     OptionalAttr<DenseBoolArrayAttr>:$task_reduction_byref,
     OptionalAttr<SymbolRefArrayAttr>:$task_reduction_syms

@@ -509,7 +509,8 @@ static ParseResult parseClauseWithRegionArgs(
 
 static void printClauseWithRegionArgs(OpAsmPrinter &p, Operation *op,
                                       ValueRange argsSubrange,
-                                      StringRef clauseName, ValueRange operands,
+                                      StringRef clauseName,
+                                       ValueRange operands,
                                       TypeRange types, DenseBoolArrayAttr byref,
                                       ArrayAttr symbols) {
   if (!clauseName.empty())
@@ -1480,6 +1481,7 @@ void ParallelOp::build(OpBuilder &builder, OperationState &state,
                     /*allocator_vars=*/ValueRange(), /*if_expr=*/nullptr,
                     /*num_threads=*/nullptr, /*private_vars=*/ValueRange(),
                     /*private_syms=*/nullptr, /*proc_bind_kind=*/nullptr,
+                  /*reduction_modifier_attr=*/nullptr,
                     /*reduction_vars=*/ValueRange(),
                     /*reduction_byref=*/nullptr, /*reduction_syms=*/nullptr);
   state.addAttributes(attributes);
@@ -1492,7 +1494,7 @@ void ParallelOp::build(OpBuilder &builder, OperationState &state,
   ParallelOp::build(builder, state, clauses.allocateVars, clauses.allocatorVars,
                     clauses.ifVar, clauses.numThreads, clauses.privateVars,
                     makeArrayAttr(ctx, clauses.privateSyms),
-                    clauses.procBindKind, clauses.reductionVars,
+                    clauses.procBindKind, clauses.reductionMod, clauses.reductionVars,
                     makeDenseBoolArrayAttr(ctx, clauses.reductionByref),
                     makeArrayAttr(ctx, clauses.reductionSyms));
 }
@@ -1591,7 +1593,7 @@ void TeamsOp::build(OpBuilder &builder, OperationState &state,
   TeamsOp::build(builder, state, clauses.allocateVars, clauses.allocatorVars,
                  clauses.ifVar, clauses.numTeamsLower, clauses.numTeamsUpper,
                  /*private_vars=*/{},
-                 /*private_syms=*/nullptr, clauses.reductionVars,
+                 /*private_syms=*/nullptr, clauses.reductionMod, clauses.reductionVars,
                  makeDenseBoolArrayAttr(ctx, clauses.reductionByref),
                  makeArrayAttr(ctx, clauses.reductionSyms),
                  clauses.threadLimit);
@@ -1639,7 +1641,7 @@ void SectionsOp::build(OpBuilder &builder, OperationState &state,
   // TODO Store clauses in op: privateVars, privateSyms.
   SectionsOp::build(builder, state, clauses.allocateVars, clauses.allocatorVars,
                     clauses.nowait, /*private_vars=*/{},
-                    /*private_syms=*/nullptr, clauses.reductionVars,
+                    /*private_syms=*/nullptr, clauses.reductionMod, clauses.reductionVars,
                     makeDenseBoolArrayAttr(ctx, clauses.reductionByref),
                     makeArrayAttr(ctx, clauses.reductionSyms));
 }
@@ -1752,6 +1754,7 @@ void WsloopOp::build(OpBuilder &builder, OperationState &state,
         /*linear_vars=*/ValueRange(), /*linear_step_vars=*/ValueRange(),
         /*nowait=*/false, /*order=*/nullptr, /*order_mod=*/nullptr,
         /*ordered=*/nullptr, /*private_vars=*/{}, /*private_syms=*/nullptr,
+        /*reduction_modifier_attr=*/nullptr,
         /*reduction_vars=*/ValueRange(), /*reduction_byref=*/nullptr,
         /*reduction_syms=*/nullptr, /*schedule_kind=*/nullptr,
         /*schedule_chunk=*/nullptr, /*schedule_mod=*/nullptr,
@@ -1769,7 +1772,7 @@ void WsloopOp::build(OpBuilder &builder, OperationState &state,
       /*allocate_vars=*/{}, /*allocator_vars=*/{}, clauses.linearVars,
       clauses.linearStepVars, clauses.nowait, clauses.order, clauses.orderMod,
       clauses.ordered, /*private_vars=*/{}, /*private_syms=*/nullptr,
-      clauses.reductionVars,
+      clauses.reductionMod, clauses.reductionVars,
       makeDenseBoolArrayAttr(ctx, clauses.reductionByref),
       makeArrayAttr(ctx, clauses.reductionSyms), clauses.scheduleKind,
       clauses.scheduleChunk, clauses.scheduleMod, clauses.scheduleSimd);
@@ -1817,7 +1820,8 @@ void SimdOp::build(OpBuilder &builder, OperationState &state,
                 makeArrayAttr(ctx, clauses.alignments), clauses.ifVar,
                 /*linear_vars=*/{}, /*linear_step_vars=*/{},
                 clauses.nontemporalVars, clauses.order, clauses.orderMod,
-                /*private_vars=*/{}, /*private_syms=*/nullptr,
+                /*private_vars=*/{}, /*private_syms=*/nullptr, 
+                /*reduction_modifier_attr=*/nullptr,
                 /*reduction_vars=*/{}, /*reduction_byref=*/nullptr,
                 /*reduction_syms=*/nullptr, clauses.safelen, clauses.simdlen);
 }
@@ -2021,7 +2025,7 @@ void TaskgroupOp::build(OpBuilder &builder, OperationState &state,
                         const TaskgroupOperands &clauses) {
   MLIRContext *ctx = builder.getContext();
   TaskgroupOp::build(builder, state, clauses.allocateVars,
-                     clauses.allocatorVars, clauses.taskReductionVars,
+                     clauses.allocatorVars, clauses.taskReductionMod, clauses.taskReductionVars,
                      makeDenseBoolArrayAttr(ctx, clauses.taskReductionByref),
                      makeArrayAttr(ctx, clauses.taskReductionSyms));
 }
@@ -2046,7 +2050,7 @@ void TaskloopOp::build(OpBuilder &builder, OperationState &state,
       makeDenseBoolArrayAttr(ctx, clauses.inReductionByref),
       makeArrayAttr(ctx, clauses.inReductionSyms), clauses.mergeable,
       clauses.nogroup, clauses.numTasks, clauses.priority, /*private_vars=*/{},
-      /*private_syms=*/nullptr, clauses.reductionVars,
+      /*private_syms=*/nullptr, clauses.reductionMod, clauses.reductionVars,
       makeDenseBoolArrayAttr(ctx, clauses.reductionByref),
       makeArrayAttr(ctx, clauses.reductionSyms), clauses.untied);
 }
