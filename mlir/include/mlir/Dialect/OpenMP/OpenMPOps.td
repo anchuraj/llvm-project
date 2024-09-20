@@ -168,7 +168,7 @@ def ParallelOp : OpenMP_Op<"parallel", traits = [
                 $allocator_vars, type($allocator_vars)
               ) `)`
           | `proc_bind` `(` custom<ClauseAttr>($proc_bind_kind) `)`
-    ) custom<ParallelRegion>($region, $reduction_vars, type($reduction_vars),
+    ) custom<ParallelRegion>($region, $reduction_modifier_attr, $reduction_vars, type($reduction_vars),
                              $reduction_byref, $reduction_syms, $private_vars,
                              type($private_vars), $private_syms) attr-dict
   }];
@@ -422,7 +422,7 @@ def WsloopOp : OpenMP_Op<"wsloop", traits = [
           |`private` `(`
                 custom<PrivateList>(
                   $private_vars, type($private_vars), $private_syms) `)`
-    ) custom<Wsloop>($region, $reduction_vars, type($reduction_vars),
+    ) custom<Wsloop>($region, $reduction_modifier_attr, $reduction_vars, type($reduction_vars),
                      $reduction_byref, $reduction_syms) attr-dict
   }];
 

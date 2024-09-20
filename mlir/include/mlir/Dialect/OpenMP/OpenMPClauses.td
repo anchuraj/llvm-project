@@ -455,6 +455,7 @@ class OpenMP_InReductionClauseSkip<
   ];
 
   let arguments = (ins
+    OptionalAttr<ReductionModifierAttr>:$in_reduction_modifier_attr,
     Variadic<OpenMP_PointerLikeType>:$in_reduction_vars,
     OptionalAttr<DenseBoolArrayAttr>:$in_reduction_byref,
     OptionalAttr<SymbolRefArrayAttr>:$in_reduction_syms
@@ -462,7 +463,7 @@ class OpenMP_InReductionClauseSkip<
 
   let assemblyFormat = [{
     `in_reduction` `(`
-      custom<ReductionVarList>($in_reduction_vars, type($in_reduction_vars),
+      custom<ReductionVarList>($in_reduction_modifier_attr, $in_reduction_vars, type($in_reduction_vars),
                                $in_reduction_byref, $in_reduction_syms) `)`
   }];
 
@@ -986,7 +987,7 @@ class OpenMP_ReductionClauseSkip<
 
   let assemblyFormat = [{
     `reduction` `(`
-      custom<ReductionVarList>($reduction_vars, type($reduction_vars),
+      custom<ReductionVarList>($reduction_modifier_attr, $reduction_vars, type($reduction_vars),
                                $reduction_byref, $reduction_syms) `)`
   }];
 
@@ -1118,7 +1119,7 @@ class OpenMP_TaskReductionClauseSkip<
 
   let assemblyFormat = [{
     `task_reduction` `(`
-      custom<ReductionVarList>($task_reduction_vars, type($task_reduction_vars),
+      custom<ReductionVarList>($reduction_modifier_attr, $task_reduction_vars, type($task_reduction_vars),
                                $task_reduction_byref, $task_reduction_syms) `)`
   }];
 

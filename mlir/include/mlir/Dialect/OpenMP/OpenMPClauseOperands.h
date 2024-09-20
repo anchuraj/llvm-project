@@ -106,6 +106,7 @@ struct IfClauseOps {
 };
 
 struct InReductionClauseOps {
+  ReductionModifierAttr inReductionMod;
   llvm::SmallVector<Value> inReductionVars;
   llvm::SmallVector<bool> inReductionByref;
   llvm::SmallVector<Attribute> inReductionSyms;

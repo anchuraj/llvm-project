@@ -1260,7 +1260,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   auto schedule =
       wsloopOp.getScheduleKind().value_or(omp::ClauseScheduleKind::Static);
 
-  bool isInScanRegion = wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan;
+  bool isInScanRegion = false;//wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan;
  
   // Find the loop configuration.
   llvm::Value *step = moduleTranslation.lookupValue(loopOp.getLoopSteps()[0]);
