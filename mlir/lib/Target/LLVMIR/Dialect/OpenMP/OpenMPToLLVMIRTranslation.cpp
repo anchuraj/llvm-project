@@ -886,6 +886,7 @@ static LogicalResult allocAndInitializeReductionVars(
     // different mapping if this reduction declaration is re-used for a
     // different variable
     moduleTranslation.forgetMapping(reductionDecls[i].getInitializerRegion());
+    
   }
 
   return success();
@@ -1177,7 +1178,140 @@ convertOmpTaskwaitOp(omp::TaskwaitOp twOp, llvm::IRBuilderBase &builder,
 llvm::BasicBlock *createBasicBlock( llvm::IRBuilderBase &builder, const Twine &name = "",
                                      llvm::Function *parent = nullptr,
                                      llvm::BasicBlock *before = nullptr) {
-    return llvm::BasicBlock::Create(builder.getContext(), name, parent, before);
+    return llvm::BasicBlock::Create(builder.getContext(), name,
+        builder.GetInsertBlock()->getParent(),
+        builder.GetInsertBlock()->getNextNode());
+}
+
+
+static void emitBlock(llvm::IRBuilderBase &builder, llvm::BasicBlock *BB, bool IsFinished=false) {
+  llvm::BasicBlock *CurBB = builder.GetInsertBlock();
+
+  // Fall out of the current block (if necessary).
+  builder.CreateBr(BB);
+
+  if (IsFinished && BB->use_empty()) {
+    delete BB;
+    return;
+  }
+
+  auto CurFn = builder.GetInsertBlock()->getParent();
+  // Place the block after the current block, if possible, or else at
+  // the end of the function.
+  if (CurBB && CurBB->getParent())
+    CurFn->insert(std::next(CurBB->getIterator()), BB);
+  else
+    CurFn->insert(CurFn->end(), BB);
+  builder.SetInsertPoint(BB);
+}
+
+static llvm::CallInst * EmitRuntimeCall(llvm::IRBuilderBase &builder, llvm::FunctionCallee callee,
+                                     ArrayRef<llvm::Value *> args,
+                                    const llvm::Twine &name) {
+  llvm::CallInst *call = builder.CreateCall(
+      callee, args, SmallVector<llvm::OperandBundleDef, 1>(), name);
+  //call->setCallingConv(RuntimeCC);
+
+  return call;
+}
+
+static llvm::CallInst * EmitNounwindRuntimeCall(llvm::IRBuilderBase &builder, llvm::FunctionCallee callee,
+                                     ArrayRef<llvm::Value *> args,
+                                    const llvm::Twine &name) {
+  llvm::CallInst *call = EmitRuntimeCall(builder, callee, args, name);
+  call->setDoesNotThrow();
+  return call;
+}
+
+
+
+static void emitScanBasedDirective(
+    omp::WsloopOp wsLoopOp, llvm::IRBuilderBase &builder, LLVM::ModuleTranslation &moduleTranslation,
+    llvm::function_ref<llvm::Value *(llvm::IRBuilderBase &)> NumIteratorsGen,
+    llvm::function_ref<void(llvm::IRBuilderBase &)> FirstGen,
+    llvm::function_ref<void(llvm::IRBuilderBase &)> SecondGen) {
+  
+    llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
+      NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
+    OMPCodeGen::ParentLoopDirectiveForScanRegion ScanRegion(wsLoopOp);
+    {
+      // Emit loop with input phase:
+      // #pragma omp ...
+      // for (i: 0..<num_iters>) {
+      //   <input phase>;
+      //   buffer[i] = red;
+      // }
+      ompCodeGen.OMPFirstScanLoop = true;
+      //CodeGenFunction::OMPLocalDeclMapRAII Scope(CGF);
+      FirstGen(builder);
+    }
+    auto &&CodeGen = [&wsLoopOp, OMPScanNumIterations, &moduleTranslation](llvm::IRBuilderBase &builder) {
+      // Emit prefix reduction:
+      // #pragma omp master // in parallel region
+      // for (int k = 0; k <= ceil(log2(n)); ++k)
+      llvm::BasicBlock *InputBB = builder.GetInsertBlock();
+      llvm::BasicBlock *LoopBB = createBasicBlock(builder, "omp.outer.log.scan.body");
+      llvm::BasicBlock *ExitBB = createBasicBlock(builder, "omp.outer.log.scan.exit");
+      llvm::Function *F = llvm::Intrinsic::getDeclaration(moduleTranslation.getLLVMModule(),(llvm::Intrinsic::ID)llvm::Intrinsic::log2,
+                                      builder.getDoubleTy());
+      llvm::Value *Arg =
+          builder.CreateUIToFP(OMPScanNumIterations, builder.getDoubleTy());
+      llvm::Value *LogVal = EmitNounwindRuntimeCall(builder, F, Arg, "");
+      F = llvm::Intrinsic::getDeclaration(moduleTranslation.getLLVMModule(),(llvm::Intrinsic::ID)llvm::Intrinsic::ceil,
+                                      builder.getDoubleTy());
+      LogVal = EmitNounwindRuntimeCall(builder, F, LogVal, "");
+      LogVal = builder.CreateFPToUI(LogVal, builder.getInt64Ty());
+      llvm::Value *NMin1 = builder.CreateNUWSub(
+          OMPScanNumIterations, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
+      //auto DL = ApplyDebugLocation::CreateDefaultArtificial(CGF, S.getBeginLoc());
+      emitBlock(builder, LoopBB);
+      auto *Counter = builder.CreatePHI(builder.getInt64Ty(), 2);
+      // size pow2k = 1;
+      auto *Pow2K = builder.CreatePHI(builder.getInt64Ty(), 2);
+      Counter->addIncoming(llvm::ConstantInt::get(builder.getInt64Ty(), 0), InputBB);
+      Pow2K->addIncoming(llvm::ConstantInt::get(builder.getInt64Ty(), 1), InputBB);
+      // for (size i = n - 1; i >= 2 ^ k; --i)
+      //   tmp[i] op= tmp[i-pow2k];
+      llvm::BasicBlock *InnerLoopBB =
+          createBasicBlock(builder, "omp.inner.log.scan.body");
+      llvm::BasicBlock *InnerExitBB =
+          createBasicBlock(builder, "omp.inner.log.scan.exit");
+      llvm::Value *CmpI = builder.CreateICmpUGE(NMin1, Pow2K);
+      builder.CreateCondBr(CmpI, InnerLoopBB, InnerExitBB);
+      emitBlock(builder, InnerLoopBB);
+      auto *IVal = builder.CreatePHI(builder.getInt64Ty(), 2);
+      IVal->addIncoming(NMin1, LoopBB);
+      llvm::Value *NextIVal =
+          builder.CreateNUWSub(IVal, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
+      IVal->addIncoming(NextIVal, builder.GetInsertBlock());
+      CmpI = builder.CreateICmpUGE(NextIVal, Pow2K);
+      builder.CreateCondBr(CmpI, InnerLoopBB, InnerExitBB);
+      emitBlock(builder, InnerExitBB);
+      llvm::Value *Next =
+          builder.CreateNUWAdd(Counter, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
+      Counter->addIncoming(Next, builder.GetInsertBlock());
+      // pow2k <<= 1;
+      llvm::Value *NextPow2K =
+          builder.CreateShl(Pow2K, 1, "", /*HasNUW=*/true);
+      Pow2K->addIncoming(NextPow2K, builder.GetInsertBlock());
+      llvm::Value *Cmp = builder.CreateICmpNE(Next, LogVal);
+      builder.CreateCondBr(Cmp, LoopBB, ExitBB);
+      //auto DL1 = ApplyDebugLocation::CreateDefaultArtificial(CGF, S.getEndLoc());
+      emitBlock(builder, ExitBB);
+    };
+    //OpenMPDirectiveKind EKind = getEffectiveDirectiveKind(S);
+    //if (isOpenMPParallelDirective(EKind)) {
+    //  CGF.CGM.getOpenMPRuntime().emitMasterRegion(CGF, CodeGen, S.getBeginLoc());
+    //  CGF.CGM.getOpenMPRuntime().emitBarrierCall(
+    //      CGF, S.getBeginLoc(), OMPD_unknown, /*EmitChecks=*/false,
+    //      /*ForceSimpleCall=*/true);
+    //} else {
+    //  RegionCodeGenTy RCG(CodeGen);
+    //  RCG(CGF);
+    //}
+
+    ompCodeGen.OMPFirstScanLoop = false;
+    SecondGen(builder);
 }
 
 /// Emits internal temp array declarations for the directive with inscan
@@ -1188,53 +1322,82 @@ llvm::BasicBlock *createBasicBlock( llvm::IRBuilderBase &builder, const Twine &n
 /// <type> buffer[num_iters];
 /// \endcode
 static void emitScanBasedDirectiveDecls(
-  const omp::WsloopOp &wsLoopOp, llvm::IRBuilderBase &builder,
-     llvm::function_ref<llvm::Value *(llvm::IRBuilderBase &)>  & NumIteratorsGen) {
-  //llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
-  //    NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
-  //SmallVector<const Expr *, 4> Shareds;
-  //SmallVector<const Expr *, 4> Privates;
-  //SmallVector<const Expr *, 4> ReductionOps;
-  //SmallVector<const Expr *, 4> CopyArrayTemps;
+  SmallVector<omp::DeclareReductionOp> reductionDecls,
+  llvm::IRBuilderBase &builder, LLVM::ModuleTranslation &moduleTranslation,
+     llvm::function_ref<llvm::Value *(llvm::IRBuilderBase &)>  NumIteratorsGen) {
 
-  //bool isInScanRegion = wsLoopOp.getReductionModifierAttrAttrName(wsLoopOp->getName()).
-  ////wsLoopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan;
-  //for (const auto *C : S.getClausesOfKind<OMPReductionClause>()) {
-  //  assert(C->getModifier() == OMPC_REDUCTION_inscan &&
-  //         "Only inscan reductions are expected.");
-  //  Shareds.append(C->varlist_begin(), C->varlist_end());
-  //  Privates.append(C->privates().begin(), C->privates().end());
-  //  ReductionOps.append(C->reduction_ops().begin(), C->reduction_ops().end());
-  //  CopyArrayTemps.append(C->copy_array_temps().begin(),
-  //                        C->copy_array_temps().end());
-  //}
-  //{
-  //  // Emit buffers for each reduction variables.
-  //  // ReductionCodeGen is required to emit correctly the code for array
-  //  // reductions.
-  //  ReductionCodeGen RedCG(Shareds, Shareds, Privates, ReductionOps);
-  //  unsigned Count = 0;
-  //  auto *ITA = CopyArrayTemps.begin();
-  //  for (const Expr *IRef : Privates) {
-  //    const auto *PrivateVD = cast<VarDecl>(cast<DeclRefExpr>(IRef)->getDecl());
-  //    // Emit variably modified arrays, used for arrays/array sections
-  //    // reductions.
-  //    if (PrivateVD->getType()->isVariablyModifiedType()) {
-  //      RedCG.emitSharedOrigLValue(CGF, Count);
-  //      RedCG.emitAggregateType(CGF, Count);
-  //    }
-  //    CodeGenFunction::OpaqueValueMapping DimMapping(
-  //        CGF,
-  //        cast<OpaqueValueExpr>(
-  //            cast<VariableArrayType>((*ITA)->getType()->getAsArrayTypeUnsafe())
-  //                ->getSizeExpr()),
-  //        RValue::get(OMPScanNumIterations));
-  //    // Emit temp buffer.
-  //    CGF.EmitVarDecl(*cast<VarDecl>(cast<DeclRefExpr>(*ITA)->getDecl()));
-  //    ++ITA;
-  //    ++Count;
-  //  }
-  //}
+  llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
+      NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
+  for (auto & reductionDecl : reductionDecls) {
+      // TODO: remove after all users of by-ref are updated to use the alloc
+      // region: Allocate reduction variable (which is a pointer to the real
+      // reduciton variable allocated in the inlined region)
+    builder.CreateAlloca(moduleTranslation.convertType(reductionDecl.getType()), OMPScanNumIterations, ".red");
+  }
+}
+
+static void EmitOMPScanDirective(omp::ScanOp &S, llvm::IRBuilderBase &builder,
+ArrayRef<llvm::Value *> privateReductionVariables,
+ LLVM::ModuleTranslation &moduleTranslation, llvm::Value *iv) {
+  //if (!OMPParentLoopDirectiveForScan)
+  //  return;
+  //const OMPExecutableDirective &ParentDir = S.;
+  auto wsLoopOp = S->getParentOfType<omp::WsloopOp>();
+  bool IsInclusive = S.getInclusiveVars().size()>0;//S.hasClausesOfKind<OMPInclusiveClause>();
+  SmallVector<omp::DeclareReductionOp> reductionDecls;
+  collectReductionDecls(wsLoopOp, reductionDecls);
+  if (!IsInclusive) {
+    builder.CreateBr(ompCodeGen.OMPAfterScanBlock/*redo*/);
+    emitBlock(builder, ompCodeGen.OMPScanExitBlock);
+  }
+  if (ompCodeGen.OMPFirstScanLoop) {
+    // Emit buffer[i] = red; at the end of the input phase.
+    for (int i=0; i<reductionDecls.size(); i++) {
+      auto buff = ompCodeGen.ScanBuffs[reductionDecls[i]];
+          //newV = builder.CreateLoad(builder.getPtrTy(), newV);
+
+        //if (!offsetIdx.empty())
+          auto newV = builder.CreateInBoundsGEP(moduleTranslation.convertType(reductionDecls[i].getType()), buff, iv, "arrayOffset" );
+          auto bufVal = builder.CreateLoad(newV->getType(), newV);
+          builder.CreateStore(bufVal, privateReductionVariables[i]);
+
+    }
+  }
+  builder.CreateBr(ompCodeGen.OMPAfterScanBlock/*Tocheck*/);
+  if (IsInclusive) {
+    emitBlock(builder, ompCodeGen.OMPScanExitBlock);
+    builder.CreateBr(ompCodeGen.OMPAfterScanBlock/*Tocheck*/);
+  }
+  emitBlock(builder, ompCodeGen.OMPScanDispatch);
+  if (!ompCodeGen.OMPFirstScanLoop) {
+    // Emit red = buffer[i]; at the entrance to the scan phase.
+    llvm::BasicBlock *ExclusiveExitBB = nullptr;
+    if (!IsInclusive) {
+      llvm::BasicBlock *ContBB = createBasicBlock(builder, "omp.exclusive.dec");
+      ExclusiveExitBB = createBasicBlock(builder, "omp.exclusive.copy.exit");
+      llvm::Value *Cmp = builder.CreateIsNull(iv);
+      builder.CreateCondBr(Cmp, ExclusiveExitBB, ContBB);
+      emitBlock(builder, ContBB);
+      // Use idx - 1 iteration for exclusive scan.
+      iv = builder.CreateNUWSub(iv, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
+    }
+    for (int i=0; i<reductionDecls.size(); i++) {
+      auto buff = ompCodeGen.ScanBuffs[reductionDecls[i]];
+          //newV = builder.CreateLoad(builder.getPtrTy(), newV);
+
+        //if (!offsetIdx.empty())
+          auto newV = builder.CreateInBoundsGEP(moduleTranslation.convertType(reductionDecls[i].getType()), buff, iv, "arrayOffset" );
+          auto bufVal = builder.CreateLoad(newV->getType(), newV);
+          builder.CreateStore(bufVal, privateReductionVariables[i]);
+
+    }
+    if (!IsInclusive) {
+      emitBlock(builder, ExclusiveExitBB);
+    }
+  }
+  builder.CreateBr((ompCodeGen.OMPFirstScanLoop == IsInclusive) ? ompCodeGen.OMPBeforeScanBlock
+                                               : ompCodeGen.OMPAfterScanBlock);
+  emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
 }
 
 /// Converts an OpenMP workshare loop into LLVM IR using OpenMPIRBuilder.
@@ -1260,7 +1423,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   auto schedule =
       wsloopOp.getScheduleKind().value_or(omp::ClauseScheduleKind::Static);
 
-  bool isInScanRegion = false;//wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan;
+  bool isInScanRegion = (wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan);
  
   // Find the loop configuration.
   llvm::Value *step = moduleTranslation.lookupValue(loopOp.getLoopSteps()[0]);
@@ -1299,22 +1462,6 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
 
   // Set up the source location value for OpenMP runtime.
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
-  {
-    //const auto &&numIteratorsGenerator = [&loopOp, &moduleTranslation](llvm::IRBuilderBase &builder) { 
-    //  return builder.CreateAdd(
-    //    builder.CreateSub(
-    //        moduleTranslation.lookupValue(loopOp.getLoopUpperBounds()[0]),
-    //        moduleTranslation.lookupValue(loopOp.getLoopLowerBounds()[0])),
-    //    builder.getInt64(1));
-    //};
-    if(isInScanRegion) {
-      builder.CreateAdd(
-        builder.CreateSub(
-            moduleTranslation.lookupValue(loopOp.getLoopUpperBounds()[0]),
-            moduleTranslation.lookupValue(loopOp.getLoopLowerBounds()[0])),
-        builder.getInt64(1));
-    }
-  }
 
   // Generator of the canonical loop body.
   // TODO: support error propagation in OpenMPIRBuilder and use it instead of
@@ -1337,19 +1484,19 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       // this directive, inclusive or exclusive. For inclusive scan the natural
       // order of the blocks is used, for exclusive clause the blocks must be
       // executed in reverse order.
-      ompCodeGen.OMPBeforeScanBlock = createBasicBlock(builder, "omp.before.scan.bb");
-      ompCodeGen.OMPAfterScanBlock = createBasicBlock(builder, "omp.after.scan.bb");
-      // No need to allocate inscan exit block, in simd mode it is selected in the
-      // codegen for the scan directive.
-      // TOCHECK Anchu
-      //if(wsloopOp.)
-      if (isSimd)
-        ompCodeGen.OMPScanExitBlock = createBasicBlock(builder, "omp.exit.inscan.bb");
-      ompCodeGen.OMPScanDispatch = createBasicBlock(builder, "omp.inscan.dispatch");
+      //ompCodeGen.OMPBeforeScanBlock = createBasicBlock(builder, "omp.before.scan.bb");
+      //ompCodeGen.OMPAfterScanBlock = createBasicBlock(builder, "omp.after.scan.bb");
+      //// No need to allocate inscan exit block, in simd mode it is selected in the
+      //// codegen for the scan directive.
+      //// TOCHECK Anchu
+      ////if(wsloopOp.)
+      ////if (isSimd)
+      //ompCodeGen.OMPScanExitBlock = createBasicBlock(builder, "omp.exit.inscan.bb");
+      //ompCodeGen.OMPScanDispatch = createBasicBlock(builder, "omp.inscan.dispatch");
       
-      builder.CreateBr(ompCodeGen.OMPScanDispatch);
+      //builder.CreateBr(ompCodeGen.OMPScanDispatch);
       
-      builder.SetInsertPoint(ompCodeGen.OMPBeforeScanBlock);
+      //builder.SetInsertPoint(ompCodeGen.OMPBeforeScanBlock);
     }
     //scan code
 
@@ -1370,9 +1517,9 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
     convertOmpOpRegions(loopOp.getRegion(), "omp.wsloop.region", builder,
                         moduleTranslation, bodyGenStatus);
     //scan code
-    if(isInScanRegion) {
-      builder.CreateBr(ompCodeGen.OMPScanExitBlock);
-    }
+    //if(isInScanRegion) {
+    //  builder.CreateBr(ompCodeGen.OMPScanExitBlock);
+    //}
     //scan code
 
   };
@@ -1399,9 +1546,36 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       loc = llvm::OpenMPIRBuilder::LocationDescription(bodyInsertPoints.back());
       computeIP = loopInfos.front()->getPreheaderIP();
     }
-    loopInfos.push_back(ompBuilder->createCanonicalLoop(
-        loc, bodyGen, lowerBound, upperBound, step,
-        /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+    {
+      if(isInScanRegion) {
+        const auto &&numIteratorsGenerator= [&](llvm::IRBuilderBase &builder) {
+          return builder.CreateAdd(
+            builder.CreateSub(
+                moduleTranslation.lookupValue(loopOp.getLoopUpperBounds()[0]),
+                moduleTranslation.lookupValue(loopOp.getLoopLowerBounds()[0])),
+            builder.getInt64(1));
+        };
+        const auto &&FirstGen = [&](llvm::IRBuilderBase &builder) {
+          loopInfos.push_back(ompBuilder->createCanonicalLoop(
+              loc, bodyGen, lowerBound, upperBound, step,
+              /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+          // Emit an implicit barrier at the end.
+            llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
+            ompBuilder->createBarrier(builder.saveIP(), llvm::omp::OMPD_barrier);
+        };
+        const auto &&SecondGen = [&](llvm::IRBuilderBase &builder) {
+          loopInfos.push_back(ompBuilder->createCanonicalLoop(
+              loc, bodyGen, lowerBound, upperBound, step,
+              /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+        };
+        emitScanBasedDirectiveDecls(reductionDecls, builder, moduleTranslation, numIteratorsGenerator);
+        emitScanBasedDirective(wsloopOp, builder, moduleTranslation, numIteratorsGenerator, FirstGen, SecondGen);
+      } else{
+        loopInfos.push_back(ompBuilder->createCanonicalLoop(
+            loc, bodyGen, lowerBound, upperBound, step,
+            /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+      }
+    }
 
     if (failed(bodyGenStatus))
       return failure();
@@ -1498,22 +1672,22 @@ convertOmpParallel(omp::ParallelOp opInst, llvm::IRBuilderBase &builder,
   auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) {
     // Allocate reduction vars
     DenseMap<Value, llvm::Value *> reductionVariableMap;
-
+    
     MutableArrayRef<BlockArgument> reductionArgs =
         opInst.getRegion().getArguments().slice(
             opInst.getNumAllocateVars() + opInst.getNumAllocatorsVars(),
             opInst.getNumReductionVars());
-
+    
     allocaIP =
         InsertPointTy(allocaIP.getBlock(),
                       allocaIP.getBlock()->getTerminator()->getIterator());
-
+    
     if (failed(allocReductionVars(
             opInst, reductionArgs, builder, moduleTranslation, allocaIP,
             reductionDecls, privateReductionVariables, reductionVariableMap,
             deferredStores, isByRef)))
       bodyGenStatus = failure();
-
+    
     // Initialize reduction vars
     builder.restoreIP(allocaIP);
     llvm::BasicBlock *initBlock = splitBB(builder, true, "omp.reduction.init");

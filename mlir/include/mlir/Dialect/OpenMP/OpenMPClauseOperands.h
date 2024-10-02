@@ -195,6 +195,14 @@ struct ReductionClauseOps {
   llvm::SmallVector<Attribute> reductionSyms;
 };
 
+struct InclusiveClauseOps {
+  llvm::SmallVector<Value> inclusiveVars;
+};
+
+struct ExclusiveClauseOps {
+  llvm::SmallVector<Value> exclusiveVars;
+};
+
 struct SafelenClauseOps {
   IntegerAttr safelen;
 };
@@ -263,6 +271,8 @@ using DistributeOperands =
 using LoopNestOperands = detail::Clauses<LoopRelatedOps>;
 
 using MaskedOperands = detail::Clauses<FilterClauseOps>;
+
+using ScanOperands = detail::Clauses<InclusiveClauseOps, ExclusiveClauseOps>;
 
 using OrderedOperands = detail::Clauses<DoacrossClauseOps>;
 

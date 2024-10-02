@@ -26,7 +26,8 @@ class OMPCodeGen{
       llvm::BasicBlock *OMPAfterScanBlock = nullptr;
       llvm::BasicBlock *OMPScanExitBlock = nullptr;
       llvm::BasicBlock *OMPScanDispatch = nullptr;
-      bool OMPFirstScanLoop = false;      
+      bool OMPFirstScanLoop = false; 
+      llvm::SmallDenseMap<omp::DeclareReductionOp, llvm::Value *> ScanBuffs;      
 
   class ParentLoopDirectiveForScanRegion {
     const omp::WsloopOp ParentLoopDirectiveForScan;
