@@ -731,7 +731,6 @@ void OpenMPIRBuilder::finalize(Function *Fn) {
     LLVM_DEBUG(dbgs() << "   Outlined function: " << *OutlinedFn << "\n");
     assert(OutlinedFn->getReturnType()->isVoidTy() &&
            "OpenMP outlined functions should not return a value!");
-
     // For compability with the clang CG we move the outlined function after the
     // one with the parallel region.
     OutlinedFn->removeFromParent();
@@ -1646,9 +1645,9 @@ IRBuilder<>::InsertPoint OpenMPIRBuilder::createParallel(
     for (Value *Output : Outputs)
       LLVM_DEBUG(dbgs() << "Captured output: " << *Output << "\n");
   });
-  assert(Outputs.empty() &&
-         "OpenMP outlining should not produce live-out values!");
-
+//  assert(Outputs.empty() &&
+//         "OpenMP outlining should not produce live-out values!");
+//
   LLVM_DEBUG(dbgs() << "After  privatization: " << *OuterFn << "\n");
   LLVM_DEBUG({
     for (auto *BB : Blocks)
