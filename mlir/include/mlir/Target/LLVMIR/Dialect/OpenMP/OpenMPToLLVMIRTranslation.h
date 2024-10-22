@@ -30,6 +30,8 @@ class OMPCodeGen{
       llvm::SmallDenseMap<omp::DeclareReductionOp, llvm::Value *> ScanBuffs;      
       SmallVector<llvm::Value *> privateReductionVariables;
       llvm::Value *iv;
+      SmallVector<llvm::BasicBlock *> continueBlocks;
+
 
   class ParentLoopDirectiveForScanRegion {
     const omp::WsloopOp ParentLoopDirectiveForScan;
