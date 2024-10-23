@@ -1313,10 +1313,12 @@ static void emitScanBasedDirective(
       llvm::Value *NMin1 = builder.CreateNUWSub(
           OMPScanNumIterations, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
       //auto DL = ApplyDebugLocation::CreateDefaultArtificial(CGF, S.getBeginLoc());
+      llvm::BasicBlock *ExitBB = splitBB(builder, false, "omp.log.scan.exit");
+      builder.SetInsertPoint(InputBB);
       llvm::BasicBlock *LoopBB = //createBasicBlock(builder, "omp.outer.log.scan.body");
       //emitBlock(builder, LoopBB);
       splitBB(builder, true, "omp.outer.log.scan.body");
-      builder.SetInsertPoint(LoopBB->getFirstInsertionPt());
+      builder.SetInsertPoint(LoopBB);
 
       //llvm::BasicBlock *test = createBasicBlock(builder, "scan.test", true);
       auto *Counter = builder.CreatePHI(builder.getInt64Ty(), 2);
@@ -1330,22 +1332,30 @@ static void emitScanBasedDirective(
      ////     createBasicBlock(builder, "omp.inner.log.scan.body");
      //// llvm::BasicBlock *InnerExitBB =
      ////     createBasicBlock(builder, "omp.inner.log.scan.exit");
-      llvm::Value *CmpI = builder.CreateICmpUGE(NMin1, Pow2K);
       //builder.CreateCondBr(CmpI, InnerLoopBB, InnerExitBB);
       llvm::BasicBlock *InnerLoopBB =
-      splitBB(builder, true, "omp.inner.log.scan.body");
-      builder.SetInsertPoint(InnerLoopBB->getFirstInsertionPt());
+      splitBB(builder, false, "omp.inner.log.scan.body");
+      builder.SetInsertPoint(InnerLoopBB);
       ////emitBlock(builder, InnerLoopBB);
       auto *IVal = builder.CreatePHI(builder.getInt64Ty(), 2);
       IVal->addIncoming(NMin1, LoopBB);
       llvm::Value *NextIVal =
           builder.CreateNUWSub(IVal, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
       IVal->addIncoming(NextIVal, builder.GetInsertBlock());
-      CmpI = builder.CreateICmpUGE(NextIVal, Pow2K);
       ////////emitBlock(builder, InnerExitBB);
       llvm::BasicBlock *InnerExitBB = splitBB(builder, false, "omp.inner.log.scan.exit");
+      llvm::Value *CmpI = builder.CreateICmpUGE(NextIVal, Pow2K);
+      //3863
       builder.CreateCondBr(CmpI, InnerLoopBB, InnerExitBB);
-      builder.SetInsertPoint(InnerExitBB->getFirstInsertionPt());
+      //3863
+
+      //3819
+      builder.SetInsertPoint(LoopBB);
+      CmpI = builder.CreateICmpUGE(NMin1, Pow2K);
+      builder.CreateCondBr(CmpI, InnerLoopBB, InnerExitBB);
+      // 3819
+
+      builder.SetInsertPoint(InnerExitBB);
       llvm::Value *Next =
           builder.CreateNUWAdd(Counter, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
       Counter->addIncoming(Next, builder.GetInsertBlock());
@@ -1354,9 +1364,8 @@ static void emitScanBasedDirective(
           builder.CreateShl(Pow2K, 1, "", /*HasNUW=*/true);
       Pow2K->addIncoming(NextPow2K, builder.GetInsertBlock());
       llvm::Value *Cmp = builder.CreateICmpNE(Next, LogVal);
-      llvm::BasicBlock *ExitBB = splitBB(builder, false, "omp.log.scan.exit");
       builder.CreateCondBr(Cmp, LoopBB, ExitBB);
-      builder.SetInsertPoint(ExitBB->getFirstInsertionPt());
+      builder.SetInsertPoint(ExitBB);
 
       ////auto DL1 = ApplyDebugLocation::CreateDefaultArtificial(CGF, S.getEndLoc());
       ////emitBlock(builder, ExitBB);
@@ -1492,9 +1501,15 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   //builder.CreateBr((ompCodeGen.OMPFirstScanLoop == IsInclusive) ? ompCodeGen.OMPBeforeScanBlock
   //                                             : ompCodeGen.OMPAfterScanBlock);
   //emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
-  //if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
+      ompCodeGen.OMPAfterScanBlock //= createBasicBlock(builder, "omp.after.scan.bb");
+      = splitBB(builder, true, "omp.after.scan.bb");
+  if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
     ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPBeforeScanBlock);
-  //}
+  }else {
+    ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPAfterScanBlock);
+
+  }
+  builder.SetInsertPoint(ompCodeGen.OMPAfterScanBlock);
   return success();
 }
 
