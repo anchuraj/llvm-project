@@ -1286,11 +1286,10 @@ static void emitScanBasedDirective(
       //CodeGenFunction::OMPLocalDeclMapRAII Scope(CGF);
       FirstGen(builder);
     }
-    auto CurFn = builder.GetInsertBlock()->getParent();
-    for(auto &bb : *CurFn){
-      bb.dump();
-    }
-    std::cout<<"===========================\n";
+    //auto CurFn = builder.GetInsertBlock()->getParent();
+    //for(auto &bb : *CurFn){
+    //  bb.dump();
+    //}
     using InsertPointTy = llvm::OpenMPIRBuilder::InsertPointTy;
     auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) 
     //auto &&CodeGen = [&wsLoopOp, OMPScanNumIterations, &moduleTranslation](llvm::IRBuilderBase &builder) 
@@ -1548,7 +1547,8 @@ static LogicalResult convertWorshareLoop(Operation &opInst,
   MutableArrayRef<BlockArgument> reductionArgs =
       wsloopOp.getRegion().getArguments();
 
-  if (failed(allocAndInitializeReductionVars(
+  if(isInScanRegion && ompCodeGen.OMPFirstScanLoop)
+   if (failed(allocAndInitializeReductionVars(
           wsloopOp, reductionArgs, builder, moduleTranslation, allocaIP,
           reductionDecls, privateReductionVariables, reductionVariableMap,
           isByRef)))
@@ -1596,7 +1596,6 @@ static LogicalResult convertWorshareLoop(Operation &opInst,
     if(isInScanRegion){
 
         OMPCodeGen::ParentLoopDirectiveForScanRegion ScanRegion(wsloopOp);
-        ompCodeGen.OMPFirstScanLoop = true;
       // Need to remember the block before and after scan directive
       // to dispatch them correctly depending on the clause used in
       // this directive, inclusive or exclusive. For inclusive scan the natural
@@ -1684,9 +1683,11 @@ static LogicalResult convertWorshareLoop(Operation &opInst,
     builder.restoreIP(afterIP);
   
     // Process the reductions if required.
-    return createReductionsAndCleanup(wsloopOp, builder, moduleTranslation,
+    if(isInScanRegion && ompCodeGen.OMPFirstScanLoop)
+      return createReductionsAndCleanup(wsloopOp, builder, moduleTranslation,
                                       allocaIP, reductionDecls,
                                       privateReductionVariables, isByRef);
+    return success();
 
   
 }
