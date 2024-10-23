@@ -1492,9 +1492,15 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   //builder.CreateBr((ompCodeGen.OMPFirstScanLoop == IsInclusive) ? ompCodeGen.OMPBeforeScanBlock
   //                                             : ompCodeGen.OMPAfterScanBlock);
   //emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
-  //if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
+      ompCodeGen.OMPAfterScanBlock //= createBasicBlock(builder, "omp.after.scan.bb");
+      = splitBB(builder, true, "omp.after.scan.bb");
+  if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
     ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPBeforeScanBlock);
-  //}
+  }else {
+    ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPAfterScanBlock);
+
+  }
+  builder.SetInsertPoint(ompCodeGen.OMPAfterScanBlock);
   return success();
 }
 
