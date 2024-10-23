@@ -35,6 +35,7 @@
 #include <any>
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <iterator>
 #include <numeric>
 #include <optional>
@@ -1268,8 +1269,8 @@ static llvm::CallInst * EmitNounwindRuntimeCall(llvm::IRBuilderBase &builder, ll
 static void emitScanBasedDirective(
     omp::WsloopOp wsLoopOp, llvm::IRBuilderBase &builder, LLVM::ModuleTranslation &moduleTranslation,
     llvm::function_ref<llvm::Value *(llvm::IRBuilderBase &)> NumIteratorsGen,
-    llvm::function_ref<void(llvm::IRBuilderBase &)> FirstGen,
-    llvm::function_ref<void(llvm::IRBuilderBase &)> SecondGen) {
+    llvm::function_ref<LogicalResult(llvm::IRBuilderBase &)> FirstGen,
+    llvm::function_ref<LogicalResult(llvm::IRBuilderBase &)> SecondGen) {
   
     llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
       NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
@@ -1285,6 +1286,11 @@ static void emitScanBasedDirective(
       //CodeGenFunction::OMPLocalDeclMapRAII Scope(CGF);
       FirstGen(builder);
     }
+    auto CurFn = builder.GetInsertBlock()->getParent();
+    for(auto &bb : *CurFn){
+      bb.dump();
+    }
+    std::cout<<"===========================\n";
     using InsertPointTy = llvm::OpenMPIRBuilder::InsertPointTy;
     auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) 
     //auto &&CodeGen = [&wsLoopOp, OMPScanNumIterations, &moduleTranslation](llvm::IRBuilderBase &builder) 
@@ -1380,7 +1386,10 @@ static void emitScanBasedDirective(
     //}
 
     ompCodeGen.OMPFirstScanLoop = false;
-    //SecondGen(builder);
+    SecondGen(builder);
+    //for(auto &bb : *CurFn){
+    //  bb.dump();
+    //}
 }
 
 /// Emits internal temp array declarations for the directive with inscan
@@ -1484,17 +1493,17 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   //builder.CreateBr((ompCodeGen.OMPFirstScanLoop == IsInclusive) ? ompCodeGen.OMPBeforeScanBlock
   //                                             : ompCodeGen.OMPAfterScanBlock);
   //emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
-  if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
+  //if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
     ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPBeforeScanBlock);
-  }
+  //}
   return success();
 }
 
-/// Converts an OpenMP workshare loop into LLVM IR using OpenMPIRBuilder.
-static LogicalResult
-convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
+static LogicalResult convertWorshareLoop(Operation &opInst,
+                                    llvm::IRBuilderBase &builder,
                  LLVM::ModuleTranslation &moduleTranslation) {
   auto wsloopOp = cast<omp::WsloopOp>(opInst);
+  bool isInScanRegion = (wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan);
   if (!wsloopOp.getAllocateVars().empty() ||
       !wsloopOp.getAllocatorVars().empty() ||
       !wsloopOp.getPrivateVars().empty() || wsloopOp.getPrivateSyms())
@@ -1513,7 +1522,6 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   auto schedule =
       wsloopOp.getScheduleKind().value_or(omp::ClauseScheduleKind::Static);
 
-  bool isInScanRegion = (wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan);
  
   // Find the loop configuration.
   llvm::Value *step = moduleTranslation.lookupValue(loopOp.getLoopSteps()[0]);
@@ -1560,6 +1568,8 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   // TODO: support error propagation in OpenMPIRBuilder and use it instead of
   // relying on captured variables.
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos;
+  SmallVector<llvm::CanonicalLoopInfo *> firstLoopInfo;
+  SmallVector<llvm::CanonicalLoopInfo *> secondLoopInfo;
   SmallVector<llvm::OpenMPIRBuilder::InsertPointTy> bodyInsertPoints;
   LogicalResult bodyGenStatus = success();
   auto bodyGen = [&](llvm::OpenMPIRBuilder::InsertPointTy ip, llvm::Value *iv) {
@@ -1643,6 +1653,53 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       loc = llvm::OpenMPIRBuilder::LocationDescription(bodyInsertPoints.back());
       computeIP = loopInfos.front()->getPreheaderIP();
     }
+    loopInfos.push_back(ompBuilder->createCanonicalLoop(
+        loc, bodyGen, lowerBound, upperBound, step,
+        /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+    if (failed(bodyGenStatus))
+      return failure();
+  }
+  // Collapse loops. Store the insertion point because LoopInfos may get
+  // invalidated.
+    llvm::IRBuilderBase::InsertPoint afterIP = loopInfos.front()->getAfterIP();
+    llvm::CanonicalLoopInfo *loopInfo =
+        ompBuilder->collapseLoops(ompLoc.DL, loopInfos, {});
+
+    allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
+
+    // TODO: Handle doacross loops when the ordered clause has a parameter.
+    bool isOrdered = wsloopOp.getOrdered().has_value();
+    std::optional<omp::ScheduleModifier> scheduleMod = wsloopOp.getScheduleMod();
+
+    ompBuilder->applyWorkshareLoop(
+        ompLoc.DL, loopInfo, allocaIP, !wsloopOp.getNowait(),
+        convertToScheduleKind(schedule), chunk, isSimd,
+        scheduleMod == omp::ScheduleModifier::monotonic,
+        scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
+
+    // Continue building IR after the loop. Note that the LoopInfo returned by
+    // `collapseLoops` points inside the outermost loop and is intended for
+    // potential further loop transformations. Use the insertion point stored
+    // before collapsing loops instead.
+    builder.restoreIP(afterIP);
+  
+    // Process the reductions if required.
+    return createReductionsAndCleanup(wsloopOp, builder, moduleTranslation,
+                                      allocaIP, reductionDecls,
+                                      privateReductionVariables, isByRef);
+
+  
+}
+
+/// Converts an OpenMP workshare loop into LLVM IR using OpenMPIRBuilder.
+static LogicalResult
+convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
+                 LLVM::ModuleTranslation &moduleTranslation) {
+  auto wsloopOp = cast<omp::WsloopOp>(opInst);
+  SmallVector<omp::DeclareReductionOp> reductionDecls;
+  collectReductionDecls(wsloopOp, reductionDecls);
+  auto loopOp = cast<omp::LoopNestOp>(wsloopOp.getWrappedLoop());
+  bool isInScanRegion = (wsloopOp.getReductionModifierAttr().value() == mlir::omp::ReductionModifier::InScan);
     {
       if(isInScanRegion) {
         const auto &&numIteratorsGenerator= [&](llvm::IRBuilderBase &builder) {
@@ -1653,59 +1710,17 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
             builder.getInt64(1));
         };
         const auto &&FirstGen = [&](llvm::IRBuilderBase &builder) {
-          loopInfos.push_back(ompBuilder->createCanonicalLoop(
-              loc, bodyGen, lowerBound, upperBound, step,
-              /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
-          // Emit an implicit barrier at the end.
-            llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
-            ompBuilder->createBarrier(builder.saveIP(), llvm::omp::OMPD_barrier);
+          return convertWorshareLoop(opInst, builder, moduleTranslation);
         };
         const auto &&SecondGen = [&](llvm::IRBuilderBase &builder) {
-            loopInfos.push_back(ompBuilder->createCanonicalLoop(
-              loc, bodyGen, lowerBound, upperBound, step,
-              /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+          return convertWorshareLoop(opInst, builder, moduleTranslation);
         };
         emitScanBasedDirectiveDecls(reductionDecls, builder, moduleTranslation, numIteratorsGenerator);
         emitScanBasedDirective(wsloopOp, builder, moduleTranslation, numIteratorsGenerator, FirstGen, SecondGen);
-      } else{
-        loopInfos.push_back(ompBuilder->createCanonicalLoop(
-            loc, bodyGen, lowerBound, upperBound, step,
-            /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP));
+        return success();
       }
     }
-
-    if (failed(bodyGenStatus))
-      return failure();
-  }
-
-  // Collapse loops. Store the insertion point because LoopInfos may get
-  // invalidated.
-  llvm::IRBuilderBase::InsertPoint afterIP = loopInfos.front()->getAfterIP();
-  llvm::CanonicalLoopInfo *loopInfo =
-      ompBuilder->collapseLoops(ompLoc.DL, loopInfos, {});
-
-  allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
-
-  // TODO: Handle doacross loops when the ordered clause has a parameter.
-  bool isOrdered = wsloopOp.getOrdered().has_value();
-  std::optional<omp::ScheduleModifier> scheduleMod = wsloopOp.getScheduleMod();
-
-  ompBuilder->applyWorkshareLoop(
-      ompLoc.DL, loopInfo, allocaIP, !wsloopOp.getNowait(),
-      convertToScheduleKind(schedule), chunk, isSimd,
-      scheduleMod == omp::ScheduleModifier::monotonic,
-      scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
-
-  // Continue building IR after the loop. Note that the LoopInfo returned by
-  // `collapseLoops` points inside the outermost loop and is intended for
-  // potential further loop transformations. Use the insertion point stored
-  // before collapsing loops instead.
-  builder.restoreIP(afterIP);
-  
-  // Process the reductions if required.
-  return createReductionsAndCleanup(wsloopOp, builder, moduleTranslation,
-                                    allocaIP, reductionDecls,
-                                    privateReductionVariables, isByRef);
+  return convertWorshareLoop(opInst, builder, moduleTranslation);
 }
 
 /// A RAII class that on construction replaces the region arguments of the
