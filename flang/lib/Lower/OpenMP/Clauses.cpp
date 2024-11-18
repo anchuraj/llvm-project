@@ -727,7 +727,7 @@ Enter make(const parser::OmpClause::Enter &inp,
 Exclusive make(const parser::OmpClause::Exclusive &inp,
                semantics::SemanticsContext &semaCtx) {
   // inp -> empty
-  llvm_unreachable("Empty: exclusive");
+  return Exclusive{makeObjects(/*List=*/inp.v, semaCtx)};
 }
 
 Fail make(const parser::OmpClause::Fail &inp,
@@ -861,7 +861,7 @@ If make(const parser::OmpClause::If &inp,
 Inclusive make(const parser::OmpClause::Inclusive &inp,
                semantics::SemanticsContext &semaCtx) {
   // inp -> empty
-  llvm_unreachable("Empty: inclusive");
+  return Inclusive{makeObjects(/*List=*/inp.v, semaCtx)};
 }
 
 Indirect make(const parser::OmpClause::Indirect &inp,

@@ -1,0 +1,57 @@
+#0  mlir::omp::LoopWrapperInterface::verifyImpl (this=0x7ffff4ff8bb0)
+    at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/Dialect/OpenMP/IR/OpenMPDialect.cpp:1988
+#1  0x000055555cb707d6 in mlir::omp::detail::LoopWrapperInterfaceTrait<mlir::omp::WsloopOp>::verifyRegionTrait
+    (op=0x55556b0b26d0)
+        at /home/asudhaku/git/anchu-fork/build/tools/mlir/include/mlir/Dialect/OpenMP/OpenMPOpsInterfaces.h.inc:437
+#2  0x000055555cb67190 in
+        mlir::op_definition_impl::verifyRegionTrait<mlir::omp::LoopWrapperInterface::Trait<mlir::omp::WsloopOp> >
+        (op=0x55556b0b26d0)
+        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OpDefinition.h:1640
+#3  0x000055555cb5b6f6 in mlir::op_definition_impl::verifyRegionTraits<mlir::OpTrait::OneRegion<mlir::omp::WsloopOp>,
+        mlir::OpTrait::ZeroResults<mlir::omp::WsloopOp>, mlir::OpTrait::ZeroSuccessors<mlir::omp::WsloopOp>,
+        mlir::OpTrait::VariadicOperands<mlir::omp::WsloopOp>,
+        mlir::OpTrait::AttrSizedOperandSegments<mlir::omp::WsloopOp>, mlir::OpTrait::NoTerminator<mlir::omp::WsloopOp>,
+        mlir::OpTrait::SingleBlock<mlir::omp::WsloopOp>, mlir::OpTrait::OpInvariants<mlir::omp::WsloopOp>,
+        mlir::BytecodeOpInterface::Trait<mlir::omp::WsloopOp>,
+        mlir::omp::ComposableOpInterface::Trait<mlir::omp::WsloopOp>,
+        mlir::omp::LoopWrapperInterface::Trait<mlir::omp::WsloopOp>,
+        mlir::OpTrait::HasRecursiveMemoryEffects<mlir::omp::WsloopOp>,
+        mlir::omp::BlockArgOpenMPOpInterface::Trait<mlir::omp::WsloopOp>,
+        mlir::omp::ReductionClauseInterface::Trait<mlir::omp::WsloopOp> > (op=0x55556b0b26d0)
+        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OpDefinition.h:1653
+#4  0x000055555cb54430 in mlir::Op<mlir::omp::WsloopOp, mlir::OpTrait::OneRegion, mlir::OpTrait::ZeroResults,
+        mlir::OpTrait::ZeroSuccessors, mlir::OpTrait::VariadicOperands, mlir::OpTrait::AttrSizedOperandSegments,
+        mlir::OpTrait::NoTerminator, mlir::OpTrait::SingleBlock, mlir::OpTrait::OpInvariants,
+        mlir::BytecodeOpInterface::Trait, mlir::omp::ComposableOpInterface::Trait,
+        mlir::omp::LoopWrapperInterface::Trait, mlir::OpTrait::HasRecursiveMemoryEffects,
+        mlir::omp::BlockArgOpenMPOpInterface::Trait, mlir::omp::ReductionClauseInterface::Trait>::verifyRegionInvariants
+        (op=0x55556b0b26d0)
+        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OpDefinition.h:2055
+#5  0x000055555bfda0c8 in llvm::detail::UniqueFunctionBase<llvm::LogicalResult,
+        mlir::Operation*>::CallImpl<llvm::LogicalResult (* const)(mlir::Operation*)> (CallableAddr=0x7ffff4ff8cd0,
+                Params#0=0x55556b0b26d0) at
+        /home/asudhaku/git/anchu-fork/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:222
+#6  0x000055555bfd64d1 in llvm::unique_function<llvm::LogicalResult (mlir::Operation*)
+        const>::operator()(mlir::Operation*) const (this=0x7ffff4ff8cd0,
+                    Params#0=0x55556b0b26d0) at
+        /home/asudhaku/git/anchu-fork/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:413
+#7  0x000055555cb39861 in mlir::RegisteredOperationName::Model<mlir::omp::WsloopOp>::verifyRegionInvariants
+        (this=0x55556b094100, op=0x55556b0b26d0)
+        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OperationSupport.h:560
+#8  0x000055556217e2b6 in mlir::OperationName::verifyRegionInvariants (this=0x7ffff4ff8db0, op=0x55556b0b26d0)
+            at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OperationSupport.h:319
+#9  0x000055556217c759 in (anonymous namespace)::OperationVerifier::verifyOnExit (this=0x7fffffff3867, op=...)
+                at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:238
+#10 0x000055556217c9ba in operator()<mlir::Operation> (__closure=0x7ffff4ff9030, workItem=0x55556b0b26d0)
+                    at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:289
+#11 0x000055556217ca26 in operator()<(anonymous
+        namespace)::OperationVerifier::verifyOperation(mlir::Operation&)::<lambda(auto:40*)> >(struct {...} &&,
+            (anonymous namespace)::OperationVerifier::WorkItem) const (__closure=0x7ffff4ff8fae, visitor=...,
+                w=Containing mlir::Operation * = {...})
+        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:278
+#12 0x000055556217cc0f in (anonymous namespace)::OperationVerifier::verifyOperation (this=0x7fffffff3867, op=...)
+            at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:288
+#13 0x000055556217b7c3 in (anonymous namespace)::OperationVerifier::verifyOpAndDominance (this=0x7fffffff3867, op=...)
+                at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:87
+#14 0x000055556217c46e in operator() (__closure=0x7fffffff34f0, o=0x55556b7c49f0)
+                    at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:231

@@ -150,6 +150,9 @@ static LogicalResult checkImplementationStatus(Operation &op) {
                           << " operation";
   };
 
+  auto checkWsloop = [&todo](auto op, LogicalResult &result) {
+      result = todo("wsloop blocked");
+  };
   auto checkAligned = [&todo](auto op, LogicalResult &result) {
     if (!op.getAlignedVars().empty() || op.getAlignments())
       result = todo("aligned");
@@ -270,6 +273,7 @@ static LogicalResult checkImplementationStatus(Operation &op) {
         checkNowait(op, result);
       })
       .Case([&](omp::WsloopOp op) {
+        //checkWsloop(op, result);
         checkAllocate(op, result);
         checkLinear(op, result);
         checkOrder(op, result);

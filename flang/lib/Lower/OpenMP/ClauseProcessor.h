@@ -99,8 +99,10 @@ public:
   bool processDepend(mlir::omp::DependClauseOps &result) const;
   bool
   processEnter(llvm::SmallVectorImpl<DeclareTargetCapturePair> &result) const;
+  bool processExclusive(mlir::Location currentLocation, mlir::omp::ExclusiveClauseOps &result) const;
   bool processIf(omp::clause::If::DirectiveNameModifier directiveName,
                  mlir::omp::IfClauseOps &result) const;
+  bool processInclusive(mlir::Location currentLocation, mlir::omp::InclusiveClauseOps &result) const;
   bool processIsDevicePtr(
       mlir::omp::IsDevicePtrClauseOps &result,
       llvm::SmallVectorImpl<const semantics::Symbol *> &isDeviceSyms) const;

@@ -1,0 +1,92 @@
+#0  mlir::omp::WsloopOp::verifyRegions (this=0x7ffff6ffcc30)
+    at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/Dialect/OpenMP/IR/OpenMPDialect.cpp:2071
+#1  0x000055555cb546a1 in mlir::Op<mlir::omp::WsloopOp, mlir::OpTrait::OneRegion, mlir::OpTrait::ZeroResults,
+    mlir::OpTrait::ZeroSuccessors, mlir::OpTrait::VariadicOperands, mlir::OpTrait::AttrSizedOperandSegments,
+    mlir::OpTrait::NoTerminator, mlir::OpTrait::SingleBlock, mlir::OpTrait::OpInvariants,
+    mlir::BytecodeOpInterface::Trait, mlir::omp::ComposableOpInterface::Trait, mlir::omp::LoopWrapperInterface::Trait,
+    mlir::OpTrait::HasRecursiveMemoryEffects, mlir::omp::BlockArgOpenMPOpInterface::Trait,
+    mlir::omp::ReductionClauseInterface::Trait>::verifyRegionInvariants (op=0x55556b0b85a0)
+        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OpDefinition.h:2057
+#2  0x000055555bfda108 in llvm::detail::UniqueFunctionBase<llvm::LogicalResult,
+        mlir::Operation*>::CallImpl<llvm::LogicalResult (* const)(mlir::Operation*)> (CallableAddr=0x7ffff6ffccd0,
+                Params#0=0x55556b0b85a0)
+        at /home/asudhaku/git/anchu-fork/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:222
+#3  0x000055555bfd6511 in llvm::unique_function<llvm::LogicalResult (mlir::Operation*)
+        const>::operator()(mlir::Operation*) const (
+                    this=0x7ffff6ffccd0, Params#0=0x55556b0b85a0)
+            at /home/asudhaku/git/anchu-fork/llvm-project/llvm/include/llvm/ADT/FunctionExtras.h:413
+#4  0x000055555cb39aab in mlir::RegisteredOperationName::Model<mlir::omp::WsloopOp>::verifyRegionInvariants
+            (this=0x55556b0940f0,
+                 op=0x55556b0b85a0) at
+            /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OperationSupport.h:560
+#5  0x000055556217e500 in mlir::OperationName::verifyRegionInvariants (this=0x7ffff6ffcdb0, op=0x55556b0b85a0)
+                at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/OperationSupport.h:319
+#6  0x000055556217c9a3 in (anonymous namespace)::OperationVerifier::verifyOnExit (this=0x7fffffff4907, op=...)
+                    at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:238
+#7  0x000055556217cc04 in operator()<mlir::Operation> (__closure=0x7ffff6ffd030, workItem=0x55556b0b85a0)
+                        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:289
+#8  0x000055556217cc70 in operator()<(anonymous
+        namespace)::OperationVerifier::verifyOperation(mlir::Operation&)::<lambda(auto:40*)> >(struct {...} &&,
+            (anonymous namespace)::OperationVerifier::WorkItem) const (__closure=0x7ffff6ffcfae, visitor=...,
+                    w=Containing mlir::Operation * = {...}) at
+            /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:278
+#9  0x000055556217ce59 in (anonymous namespace)::OperationVerifier::verifyOperation (this=0x7fffffff4907, op=...)
+                at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:288
+#10 0x000055556217ba0d in (anonymous namespace)::OperationVerifier::verifyOpAndDominance (this=0x7fffffff4907, op=...)
+                    at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:87
+#11 0x000055556217c6b8 in operator() (__closure=0x7fffffff4590, o=0x55556b1604d0)
+                        at /home/asudhaku/git/anchu-fork/llvm-project/mlir/lib/IR/Verifier.cpp:231
+#12 0x000055556217dcd0 in operator() (__closure=0x55556b1a3450)
+                            at /home/asudhaku/git/anchu-fork/llvm-project/mlir/include/mlir/IR/Threading.h:62
+#13 0x000055556217e3a4 in std::__invoke_impl<void, mlir::failableParallelForEach<mlir::Operation**, (anonymous
+        namespace)::OperationVerifier::verifyOnExit(mlir::Operation&)::<lambda(mlir::Operation*)> >(mlir::MLIRContext*,
+            mlir::Operation**, mlir::Operation**, (anon
+                ymous
+                namespace)::OperationVerifier::verifyOnExit(mlir::Operation&)::<lambda(mlir::Operation*)>&&)::<lambda()>&>(std::__invoke_other,
+                struct {...} &) (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#14 0x000055556217e2a9 in std::__invoke_r<void, mlir::failableParallelForEach<mlir::Operation**, (anonymous
+        namespace)::OperationVerifier::verifyOnExit(mlir::Operation&)::<lambda(mlir::Operation*)> >(mlir::MLIRContext*,
+            mlir::Operation**, mlir::Operation**, (anonymous
+                namespace)::OperationVerifier::verifyOnExit(mlir::Operation&)::<lambda(mlir::Operation*)>&&)::<lambda()>&>(struct
+                {...} &) (
+                        __fn=...) at /usr/include/c++/11/bits/invoke.h:111
+#15 0x000055556217e18c in std::_Function_handler<void(), mlir::failableParallelForEach<mlir::Operation**, (anonymous
+        namespace)::OperationVerifier::verifyOnExit(mlir::Operation&)::<lambda(mlir::Operation*)> >(mlir::MLIRContext*,
+            mlir::Operation**, mlir::Operation**, (anonymous
+                namespace)::OperationVerifier::verifyOnExit(mlir::Operation&)::<lambda(mlir::Operation*)>&&)::<lambda()>
+        >::_M_invoke(const std::_Any_data &) (__functor=...) at /usr/include/c++/11/bits/std_function.h:290
+#16 0x0000555558470cd2 in std::function<void ()>::operator()() const (this=0x55556b186db8)
+            at /usr/include/c++/11/bits/std_function.h:590
+#17 0x000055555fc25446 in std::__invoke_impl<void, std::function<void ()>>(std::__invoke_other, std::function<void
+        ()>&&) (__f=...)
+    at /usr/include/c++/11/bits/invoke.h:61
+#18 0x000055555fc25401 in std::__invoke<std::function<void ()>>(std::function<void ()>&&) (__fn=...)
+        at /usr/include/c++/11/bits/invoke.h:96
+#19 0x000055555fc25390 in std::thread::_Invoker<std::tuple<std::function<void ()> >
+        >::_M_invoke<0ul>(std::_Index_tuple<0ul>) (
+                    this=0x55556b186db8) at /usr/include/c++/11/bits/std_thread.h:259
+#20 0x000055555fc252f2 in std::thread::_Invoker<std::tuple<std::function<void ()> > >::operator()()
+        (this=0x55556b186db8)
+        at /usr/include/c++/11/bits/std_thread.h:266
+#21 0x000055555fc25131 in std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>,
+        std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::function<void ()> > >,
+        void>::operator()() const (this=0x7ffff6ffd6a0)
+        at /usr/include/c++/11/future:1409
+#22 0x000055555fc24fcd in std::__invoke_impl<std::unique_ptr<std::__future_base::_Result<void>,
+        std::__future_base::_Result_base::_Deleter>,
+        std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>,
+        std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::function<void ()> > >,
+        void>&>(std::__invoke_other, std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>,
+                std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::function<void ()> >
+                >, void>&) (__f=...) at /usr/include/c++/11/bits/invoke.h:61
+#23 0x000055555fc24d9d in std::__invoke_r<std::unique_ptr<std::__future_base::_Result_base,
+        std::__future_base::_Result_base::_Deleter>,
+        std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>,
+        std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::function<void ()> > >,
+        void>&>(std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>,
+                std::__future_base::_Result_base::_Deleter>, std::thread::_Invoker<std::tuple<std::function<void ()> >
+                >, void>&) (__fn=...) at /usr/include/c++/11/bits/invoke.h:116
+#24 0x000055555fc24b1a in std::_Function_handler<std::unique_ptr<std::__future_base::_Result_base,
+        std::__future_base::_Result_base::_Deleter> (),
+        std::__future_base::_Task_setter<std::unique_ptr<std::__future_base::_Result<void>,
+        std::__future_base::_Result_base::_

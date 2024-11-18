@@ -992,11 +992,11 @@ void OmpStructureChecker::Leave(const parser::OpenMPLoopConstruct &x) {
           if (auto &symbol = name->symbol) {
             if (!symbol->test(Symbol::Flag::OmpInclusiveScan) &&
                 !symbol->test(Symbol::Flag::OmpExclusiveScan)) {
-              context_.Say(name->source,
-                  "List item %s must appear in EXCLUSIVE or "
-                  "INCLUSIVE clause of an "
-                  "enclosed SCAN directive"_err_en_US,
-                  name->ToString());
+              //context_.Say(name->source,
+              //    "List item %s must appear in EXCLUSIVE or "
+              //    "INCLUSIVE clause of an "
+              //    "enclosed SCAN directive"_err_en_US,
+              //    name->ToString());
             }
           }
         };

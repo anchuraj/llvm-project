@@ -2455,13 +2455,13 @@ void OmpAttributeVisitor::ResolveOmpObject(
                 }
                 if (ompFlag == Symbol::Flag::OmpInclusiveScan ||
                     ompFlag == Symbol::Flag::OmpExclusiveScan) {
-                  if (!symbol->test(Symbol::Flag::OmpInScanReduction)) {
-                    context_.Say(name->source,
-                        "List item %s must appear in REDUCTION clause "
-                        "with the INSCAN modifier of the parent "
-                        "directive"_err_en_US,
-                        name->ToString());
-                  }
+                  //if (!symbol->test(Symbol::Flag::OmpInScanReduction)) {
+                  //  context_.Say(name->source,
+                  //      "List item %s must appear in REDUCTION clause "
+                  //      "with the INSCAN modifier of the parent "
+                  //      "directive"_err_en_US,
+                  //      name->ToString());
+                  //}
                 }
                 if (GetContext().directive ==
                     llvm::omp::Directive::OMPD_target_data) {

@@ -676,6 +676,38 @@ bool ClauseProcessor::processCopyin() const {
   return hasCopyin;
 }
 
+bool ClauseProcessor::processInclusive(
+    mlir::Location currentLocation,
+    mlir::omp::InclusiveClauseOps &result) const {
+  return findRepeatableClause<omp::clause::Inclusive>(
+      [&](const omp::clause::Inclusive &clause, const parser::CharBlock &) {
+        for (const Object &object : clause.v) {
+          const semantics::Symbol *symbol = object.sym();
+          mlir::Value symVal = converter.getSymbolAddress(*symbol);
+          if (auto declOp = symVal.getDefiningOp<hlfir::DeclareOp>()) {
+            symVal = declOp.getBase();
+          }
+          result.inclusiveVars.push_back(symVal);
+        }
+      });
+}
+
+bool ClauseProcessor::processExclusive(
+    mlir::Location currentLocation,
+    mlir::omp::ExclusiveClauseOps &result) const {
+  return findRepeatableClause<omp::clause::Exclusive>(
+      [&](const omp::clause::Exclusive &clause, const parser::CharBlock &) {
+        for (const Object &object : clause.v) {
+          semantics::Symbol *sym = object.sym();
+          mlir::Value symVal = converter.getSymbolAddress(*sym);
+          if (auto declOp = symVal.getDefiningOp<hlfir::DeclareOp>()) {
+            symVal = declOp.getBase();
+          }
+          result.exclusiveVars.push_back(symVal);
+        }
+      });
+}
+
 /// Class that extracts information from the specified type.
 class TypeInfo {
 public:
@@ -1107,6 +1139,19 @@ bool ClauseProcessor::processNontemporal(
       });
 }
 
+mlir::omp::ReductionModifier
+translateReductionModifier(const omp::clause::Reduction::ReductionModifier &m) {
+  switch (m) {
+  case omp::clause::Reduction::ReductionModifier::Default:
+    return mlir::omp::ReductionModifier::Default;
+  case omp::clause::Reduction::ReductionModifier::Inscan:
+    return mlir::omp::ReductionModifier::InScan;
+  case omp::clause::Reduction::ReductionModifier::Task:
+    return mlir::omp::ReductionModifier::Task;
+  }
+  return mlir::omp::ReductionModifier::Default;
+}
+
 bool ClauseProcessor::processReduction(
     mlir::Location currentLocation, mlir::omp::ReductionClauseOps &result,
     llvm::SmallVectorImpl<const semantics::Symbol *> &outReductionSyms) const {
@@ -1127,6 +1172,11 @@ bool ClauseProcessor::processReduction(
         llvm::copy(reductionDeclSymbols,
                    std::back_inserter(result.reductionSyms));
         llvm::copy(reductionSyms, std::back_inserter(outReductionSyms));
+        fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
+        mlir::MLIRContext *context = firOpBuilder.getContext();
+        auto redMod = std::get<std::optional<omp::clause::Reduction::ReductionModifier>>(clause.t); 
+        if(redMod.has_value())
+          result.reductionMod = mlir::omp::ReductionModifierAttr::get(context, translateReductionModifier(redMod.value()));
       });
 }
 

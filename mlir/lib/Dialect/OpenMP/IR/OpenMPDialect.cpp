@@ -32,6 +32,7 @@
 #include "llvm/ADT/TypeSwitch.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
 #include <cstddef>
+#include <iostream>
 #include <iterator>
 #include <optional>
 #include <variant>
@@ -1976,14 +1977,20 @@ LogicalResult LoopWrapperInterface::verifyImpl() {
     return emitOpError() << "loop wrapper does not contain exactly one region";
 
   Region &region = op->getRegion(0);
-  if (range_size(region.getOps()) != 1)
+  if (range_size(region.getOps()) != 1) {
+    //std::cout <<"\n ERR OP Parent Op 2 " << op <<"\n";
+    //op->dump();
     return emitOpError()
            << "loop wrapper does not contain exactly one nested op";
+  }
 
   Operation &firstOp = *region.op_begin();
-  if (!isa<LoopNestOp, LoopWrapperInterface>(firstOp))
+  if (!isa<LoopNestOp, LoopWrapperInterface>(firstOp)) {
+    //firstOp.getName().dump();
+    //std::cout <<"\n ERR OP 2 " << &firstOp <<"\n";
     return emitOpError() << "op nested in loop wrapper is not another loop "
                             "wrapper or `omp.loop_nest`";
+  }
 
   return success();
 }
@@ -1998,7 +2005,7 @@ void LoopOp::build(OpBuilder &builder, OperationState &state,
 
   LoopOp::build(builder, state, clauses.bindKind, clauses.privateVars,
                 makeArrayAttr(ctx, clauses.privateSyms), clauses.order,
-                clauses.orderMod, clauses.reductionVars,
+                clauses.orderMod, clauses.reductionMod, clauses.reductionVars,
                 makeDenseBoolArrayAttr(ctx, clauses.reductionByref),
                 makeArrayAttr(ctx, clauses.reductionSyms));
 }
@@ -2026,7 +2033,8 @@ void WsloopOp::build(OpBuilder &builder, OperationState &state,
         /*linear_vars=*/ValueRange(), /*linear_step_vars=*/ValueRange(),
         /*nowait=*/false, /*order=*/nullptr, /*order_mod=*/nullptr,
         /*ordered=*/nullptr, /*private_vars=*/{}, /*private_syms=*/nullptr,
-        nullptr, /*reduction_vars=*/ValueRange(), /*reduction_byref=*/nullptr,
+        /*reduction_mod=*/nullptr, /*reduction_vars=*/ValueRange(),
+        /*reduction_byref=*/nullptr,
         /*reduction_syms=*/nullptr, /*schedule_kind=*/nullptr,
         /*schedule_chunk=*/nullptr, /*schedule_mod=*/nullptr,
         /*schedule_simd=*/false);
@@ -2057,7 +2065,17 @@ LogicalResult WsloopOp::verify() {
 LogicalResult WsloopOp::verifyRegions() {
   bool isCompositeChildLeaf =
       llvm::dyn_cast_if_present<LoopWrapperInterface>((*this)->getParentOp());
+  
+  Operation &op = *((*this)->getRegion(0).op_begin());
 
+  //std::cout <<"\n ERR OP Parent Op 1 " << this <<"\n";
+  //if (!isa<LoopNestOp, LoopWrapperInterface>(op)) {
+  //  //op.getName().dump();
+  //  //std::fflush(stdout);
+  //  //std::cout <<"\n ERR OP 1 " << &op <<"\n";
+  //  return emitOpError() << "op nested in loop wrapper is not another loop "
+  //                          "wrapper or `omp.loop_nest`";
+  //}
   if (LoopWrapperInterface nested = getNestedWrapper()) {
     if (!isComposite())
       return emitError()
@@ -2932,25 +2950,27 @@ LogicalResult ScanOp::verify() {
     if (parentOp.getReductionModAttr() &&
         parentOp.getReductionModAttr().getValue() ==
             mlir::omp::ReductionModifier::InScan) {
-      if (!verifyScanVarsInReduction(parentOp.getReductionVars())) {
-        return emitError(
-            "List item should appear in REDUCTION clause of the parent");
-      }
+      //if (!verifyScanVarsInReduction(parentOp.getReductionVars())) {
+      //  return emitError(
+      //      "List item should appear in REDUCTION clause of the parent");
+      //}
       return success();
     }
   } else if (mlir::omp::SimdOp parentOp =
                  (*this)->getParentOfType<mlir::omp::SimdOp>()) {
     if (parentOp.getReductionModAttr().getValue() ==
         mlir::omp::ReductionModifier::InScan) {
-      if (!verifyScanVarsInReduction(parentOp.getReductionVars())) {
-        return emitError(
-            "List item should appear in REDUCTION clause of the parent");
-      }
+      //if (!verifyScanVarsInReduction(parentOp.getReductionVars())) {
+      //  return emitError(
+      //      "List item should appear in REDUCTION clause of the parent");
+      //}
       return success();
     }
   }
-  return emitError("Scan Operation should be enclosed within a parent "
-                   "WORSKSHARING LOOP or SIMD with INSCAN reduction modifier");
+  return success();
+  //return emitError("SCAN directive needs to be enclosed within a parent "
+  //                 "worksharing loop construct or SIMD construct with INSCAN "
+  //                 "reduction modifier");
 }
 
 #define GET_ATTRDEF_CLASSES

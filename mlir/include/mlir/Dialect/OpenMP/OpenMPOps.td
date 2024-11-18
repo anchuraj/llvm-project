@@ -461,8 +461,8 @@ def LoopOp : OpenMP_Op<"loop", traits = [
 
   let assemblyFormat = clausesAssemblyFormat # [{
     custom<PrivateReductionRegion>($region, $private_vars, type($private_vars),
-        $private_syms, $reduction_vars, type($reduction_vars), $reduction_byref,
-        $reduction_syms) attr-dict
+        $private_syms, $reduction_mod, $reduction_vars, type($reduction_vars),
+        $reduction_byref, $reduction_syms) attr-dict
   }];
 
   let builders = [
@@ -1653,13 +1653,13 @@ def CancellationPointOp : OpenMP_Op<"cancellation_point", clauses = [
 }
 
 def ScanOp : OpenMP_Op<"scan", [
-    AttrSizedOperandSegments, RecipeInterface, IsolatedFromAbove
+    AttrSizedOperandSegments
   ], clauses = [
   OpenMP_InclusiveClause, OpenMP_ExclusiveClause]> {
   let summary = "scan directive";
   let description = [{
     The scan directive allows to specify scan reduction. Scan directive
-    should be enclosed with in a parent directive along with which , a
+    should be enclosed with in a parent directive along with which, a
     reduction clause with `InScan` modifier must be specified. Scan directive
     allows to separate code blocks to input phase and scan phase in the region
     enclosed by the parent.

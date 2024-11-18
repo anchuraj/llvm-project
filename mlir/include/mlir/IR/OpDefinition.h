@@ -24,6 +24,7 @@
 #include "mlir/IR/Operation.h"
 #include "llvm/Support/PointerLikeTypeTraits.h"
 
+#include <iostream>
 #include <optional>
 #include <type_traits>
 
