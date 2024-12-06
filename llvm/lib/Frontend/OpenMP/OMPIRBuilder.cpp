@@ -3864,8 +3864,9 @@ OpenMPIRBuilder::createMasked(const LocationDescription &Loc,
   Function *ExitRTLFn = getOrCreateRuntimeFunctionPtr(OMPRTL___kmpc_end_masked);
   Instruction *ExitCall = Builder.CreateCall(ExitRTLFn, ArgsEnd);
 
-  return EmitOMPInlinedRegion(OMPD, EntryCall, ExitCall, BodyGenCB, FiniCB,
+  auto ret = EmitOMPInlinedRegion(OMPD, EntryCall, ExitCall, BodyGenCB, FiniCB,
                               /*Conditional*/ true, /*hasFinalize*/ true);
+  return ret;
 }
 
 CanonicalLoopInfo *OpenMPIRBuilder::createLoopSkeleton(
