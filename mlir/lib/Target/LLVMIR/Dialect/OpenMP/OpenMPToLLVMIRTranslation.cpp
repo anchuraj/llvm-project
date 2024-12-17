@@ -424,7 +424,10 @@ static llvm::Expected<llvm::BasicBlock *> convertOmpOpRegions(
       llvm::Value *testCondVal2 =
         llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/0);
       llvm::Value *CmpI = builder.CreateICmpUGE(testCondVal1, testCondVal2);
-      builder.CreateCondBr(CmpI, ompCodeGen.OMPScanDispatch, ompCodeGen.OMPAfterScanBlock);
+      if(ompCodeGen.OMPFirstScanLoop)
+        builder.CreateCondBr(CmpI, ompCodeGen.OMPScanDispatch, ompCodeGen.OMPAfterScanBlock);
+      else
+        builder.CreateCondBr(CmpI, ompCodeGen.OMPScanDispatch, ompCodeGen.OMPBeforeScanBlock);
       //builder.CreateBr(ompCodeGen.OMPScanDispatch);
       //test code to create an extra parent end
       llvmBB = ompCodeGen.OMPBeforeScanBlock;
@@ -1510,7 +1513,7 @@ static LogicalResult emitScanBasedDirective(
     //}
 
     ompCodeGen.OMPFirstScanLoop = false;
-    //SecondGen(builder);
+    SecondGen(builder);
     return success();
     //for(auto &bb : *CurFn){
     //  bb.dump();
@@ -1601,7 +1604,7 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   //}
 // 5670
   //emitBlock(builder, ompCodeGen.OMPScanDispatch);
-  builder.SetInsertPoint(ompCodeGen.OMPAfterScanBlock);
+  builder.SetInsertPoint(ompCodeGen.OMPScanDispatch);
   if (!ompCodeGen.OMPFirstScanLoop) {
     // Emit red = buffer[i]; at the entrance to the scan phase.
     llvm::BasicBlock *ExclusiveExitBB = nullptr;
@@ -1636,17 +1639,15 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   //builder.CreateBr((ompCodeGen.OMPFirstScanLoop == IsInclusive) ? ompCodeGen.OMPBeforeScanBlock
   //                                             : ompCodeGen.OMPAfterScanBlock);
   //emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
-  if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
-    builder.SetInsertPoint(ompCodeGen.OMPScanDispatch);
-    builder.CreateBr(ompCodeGen.OMPBeforeScanBlock);
       emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
-      builder.SetInsertPoint(ompCodeGen.OMPAfterScanBlock);
+  if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
+    builder.CreateBr(ompCodeGen.OMPBeforeScanBlock);
     //builder.SetInsertPoint(ompCodeGen.OMPScanExitBlock);
     //ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPBeforeScanBlock);
   }else {
-    ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPAfterScanBlock);
-
+    builder.CreateBr(ompCodeGen.OMPAfterScanBlock);
   }
+  builder.SetInsertPoint(ompCodeGen.OMPAfterScanBlock);
   return success();
 }
 
