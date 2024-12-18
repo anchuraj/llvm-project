@@ -228,6 +228,9 @@ static LogicalResult checkImplementationStatus(Operation &op) {
     if (!op.getReductionVars().empty() || op.getReductionByref() ||
         op.getReductionSyms())
       result = todo("reduction");
+    //if(llvm::dyn_cast_or_null<omp::SimdOp>(op) && op.getReductionMod())
+    //  result = todo("reduction");
+    
   };
   auto checkThreadLimit = [&todo](auto op, LogicalResult &result) {
     if (op.getThreadLimit())
@@ -545,10 +548,6 @@ static llvm::Expected<llvm::BasicBlock *> convertOmpOpRegions(
   // speeds up the lookups.
   moduleTranslation.forgetMapping(region);
 
-    auto CurFn = builder.GetInsertBlock()->getParent();
-    for(auto &bb : *CurFn){
-      bb.dump();
-    }
   return continuationBlock;
 }
 
@@ -1381,10 +1380,10 @@ static LogicalResult emitScanBasedDirective(
       //CodeGenFunction::OMPLocalDeclMapRAII Scope(CGF);
       FirstGen(builder);
     }
-    auto CurFn = builder.GetInsertBlock()->getParent();
-    for(auto &bb : *CurFn){
-      bb.dump();
-    }
+    //auto CurFn = builder.GetInsertBlock()->getParent();
+    //for(auto &bb : *CurFn){
+    //  bb.dump();
+    //}
     using InsertPointTy = llvm::OpenMPIRBuilder::InsertPointTy;
     auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) 
     ////auto &&CodeGen = [&wsLoopOp, OMPScanNumIterations, &moduleTranslation](llvm::IRBuilderBase &builder) 
@@ -1408,7 +1407,7 @@ static LogicalResult emitScanBasedDirective(
       llvm::Value *NMin1 = builder.CreateNUWSub(
           OMPScanNumIterations, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
       //auto DL = ApplyDebugLocation::CreateDefaultArtificial(CGF, S.getBeginLoc());
-      llvm::BasicBlock *ExitBB = splitBB(builder, false, "omp.log.scan.exit");
+      llvm::BasicBlock *ExitBB = splitBB(builder, false, "omp.outer.log.scan.exit");
       builder.SetInsertPoint(InputBB);
       llvm::BasicBlock *LoopBB = //createBasicBlock(builder, "omp.outer.log.scan.body");
       //emitBlock(builder, LoopBB);
@@ -2295,7 +2294,7 @@ convertWorkshareLoop(Operation &opInst, llvm::IRBuilderBase &builder,
   builder.restoreIP(afterIP);
 
   // Process the reductions if required.
-  if(!isInScanRegion || (isInScanRegion && ompCodeGen.OMPFirstScanLoop))
+  if(!isInScanRegion)
     return createReductionsAndCleanup(wsloopOp, builder, moduleTranslation,
                                       allocaIP, reductionDecls,
                                       privateReductionVariables, isByRef);
