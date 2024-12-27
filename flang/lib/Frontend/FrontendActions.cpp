@@ -859,6 +859,8 @@ void CodeGenAction::generateLLVMIR() {
     ci.getDiagnostics().Report(diagID);
     return;
   }
+ 
+  mlirModule->dump();
 
   // Translate to LLVM IR
   std::optional<llvm::StringRef> moduleName = mlirModule->getName();

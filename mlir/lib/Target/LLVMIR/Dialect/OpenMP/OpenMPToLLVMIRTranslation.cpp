@@ -2315,11 +2315,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
     {
       if(isInScanRegion) {
         const auto &&numIteratorsGenerator= [&](llvm::IRBuilderBase &builder) {
-          return builder.CreateAdd(
-            builder.CreateSub(
-                moduleTranslation.lookupValue(loopOp.getLoopUpperBounds()[0]),
-                moduleTranslation.lookupValue(loopOp.getLoopLowerBounds()[0])),
-            builder.getInt64(1));
+            return builder.getInt64(1);
         };
         const auto &&FirstGen = [&](llvm::IRBuilderBase &builder) {
           return convertWorkshareLoop(opInst, builder, moduleTranslation);
