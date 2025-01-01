@@ -1020,7 +1020,7 @@ allocReductionVars(T loop, ArrayRef<BlockArgument> reductionArgs,
                    SmallVectorImpl<llvm::Value *> &privateReductionVariables,
                    DenseMap<Value, llvm::Value *> &reductionVariableMap,
                    SmallVectorImpl<DeferredStore> &deferredStores,
-                   llvm::ArrayRef<bool> isByRefs) {
+                   llvm::ArrayRef<bool> isByRefs, bool isInScanRegion = false) {
   llvm::IRBuilderBase::InsertPointGuard guard(builder);
   builder.SetInsertPoint(allocaIP.getBlock()->getTerminator());
 
@@ -1049,7 +1049,8 @@ allocReductionVars(T loop, ArrayRef<BlockArgument> reductionArgs,
       deferredStores.emplace_back(phis[0], var);
 
       privateReductionVariables[i] = var;
-      ompCodeGen.privateReductionVariables[i] = var;
+      if(isInScanRegion)
+        ompCodeGen.privateReductionVariables[i] = var;
       moduleTranslation.mapValue(reductionArgs[i], phis[0]);
       reductionVariableMap.try_emplace(loop.getReductionVars()[i], phis[0]);
     } else {
@@ -1059,7 +1060,8 @@ allocReductionVars(T loop, ArrayRef<BlockArgument> reductionArgs,
           moduleTranslation.convertType(reductionDecls[i].getType()));
       moduleTranslation.mapValue(reductionArgs[i], var);
       privateReductionVariables[i] = var;
-      ompCodeGen.privateReductionVariables[i] = var;
+      if(isInScanRegion)
+        ompCodeGen.privateReductionVariables[i] = var;
       reductionVariableMap.try_emplace(loop.getReductionVars()[i], var);
     }
   }
@@ -1240,7 +1242,7 @@ static LogicalResult allocAndInitializeReductionVars(
     SmallVectorImpl<omp::DeclareReductionOp> &reductionDecls,
     SmallVectorImpl<llvm::Value *> &privateReductionVariables,
     DenseMap<Value, llvm::Value *> &reductionVariableMap,
-    llvm::ArrayRef<bool> isByRef) {
+    llvm::ArrayRef<bool> isByRef, bool isInScanRegion = false) {
   if (op.getNumReductionVars() == 0)
     return success();
 
@@ -1249,7 +1251,7 @@ static LogicalResult allocAndInitializeReductionVars(
   if (failed(allocReductionVars(op, reductionArgs, builder, moduleTranslation,
                                 allocaIP, reductionDecls,
                                 privateReductionVariables, reductionVariableMap,
-                                deferredStores, isByRef)))
+                                deferredStores, isByRef, isInScanRegion)))
     return failure();
 
   // store result of the alloc region to the allocated pointer to the real
@@ -2156,7 +2158,7 @@ convertWorkshareLoop(Operation &opInst, llvm::IRBuilderBase &builder,
     if (failed(allocAndInitializeReductionVars(
             wsloopOp, reductionArgs, builder, moduleTranslation, allocaIP,
             reductionDecls, privateReductionVariables, reductionVariableMap,
-            isByRef)))
+            isByRef, isInScanRegion)))
       return failure();
 
   // TODO: Replace this with proper composite translation support.
@@ -2227,7 +2229,7 @@ convertWorkshareLoop(Operation &opInst, llvm::IRBuilderBase &builder,
     }
     //scan code
     return convertOmpOpRegions(loopOp.getRegion(), "omp.wsloop.region", builder,
-                               moduleTranslation, nullptr, true)
+                               moduleTranslation, nullptr, isInScanRegion)
         .takeError();
   };
 
