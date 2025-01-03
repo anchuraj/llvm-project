@@ -3894,7 +3894,7 @@ static void emitScanBasedDirective(
   }
 
   CGF.OMPFirstScanLoop = false;
-  //SecondGen(CGF);
+  SecondGen(CGF);
 }
 
 static bool emitWorksharingDirective(CodeGenFunction &CGF,

@@ -1047,6 +1047,8 @@ allocReductionVars(T loop, ArrayRef<BlockArgument> reductionArgs,
       llvm::Value *var = builder.CreateAlloca(
           moduleTranslation.convertType(reductionDecls[i].getType()));
       moduleTranslation.mapValue(reductionArgs[i], var);
+      std::cout<< "here\n";
+      var->dump();
       privateReductionVariables[i] = var;
       if(isInScanRegion)
         ompCodeGen.privateReductionVariables[i] = var;
@@ -1501,10 +1503,22 @@ static LogicalResult emitScanBasedDirective(
 
     ompCodeGen.OMPFirstScanLoop = false;
     SecondGen(builder);
+  auto CurFn = builder.GetInsertBlock()->getParent();
+    for(auto &bb : *CurFn){
+      bb.dump();
+    }
     return success();
-    //for(auto &bb : *CurFn){
-    //  bb.dump();
-    //}
+}
+
+
+static LogicalResult emitScanBasedDirectiveFinals(
+    Operation &opInst,
+    omp::WsloopOp wsLoopOp, llvm::IRBuilderBase &builder, LLVM::ModuleTranslation &moduleTranslation,
+    llvm::function_ref<llvm::Value *(llvm::IRBuilderBase &)> NumIteratorsGen,
+    SmallVector<omp::DeclareReductionOp> reductionDecls) {
+      
+      
+      return success();    
 }
 
 /// Emits internal temp array declarations for the directive with inscan
@@ -1548,8 +1562,8 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   collectReductionDecls(wsLoopOp, reductionDecls);
 
   if (!IsInclusive) {
-    builder.CreateBr(ompCodeGen.OMPBeforeScanBlock/*redo*/);
-    emitBlock(builder, ompCodeGen.OMPScanExitBlock);
+    builder.CreateBr(ompCodeGen.continueBlocks.back()/*redo*/);
+    //emitBlock(builder, ompCodeGen.OMPScanExitBlock);
   }
   if (ompCodeGen.OMPFirstScanLoop) {
     assert(!ompCodeGen.privateReductionVariables.empty());
@@ -1601,8 +1615,9 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
       llvm::Value *Cmp = builder.CreateIsNull(iv);
       builder.CreateCondBr(Cmp, ExclusiveExitBB, ContBB);
       emitBlock(builder, ContBB);
+      builder.SetInsertPoint(ContBB);
       // Use idx - 1 iteration for exclusive scan.
-      iv = builder.CreateNUWSub(iv, llvm::ConstantInt::get(builder.getInt64Ty(), 1));
+      iv = builder.CreateNUWSub(iv, llvm::ConstantInt::get(iv->getType(), 1));
     }
     for (int i=0; i<reductionDecls.size(); i++) {
       // x = buffer[i]
