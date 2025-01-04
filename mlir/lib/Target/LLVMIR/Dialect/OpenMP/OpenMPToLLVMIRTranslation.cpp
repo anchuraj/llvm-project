@@ -1047,11 +1047,12 @@ allocReductionVars(T loop, ArrayRef<BlockArgument> reductionArgs,
       llvm::Value *var = builder.CreateAlloca(
           moduleTranslation.convertType(reductionDecls[i].getType()));
       moduleTranslation.mapValue(reductionArgs[i], var);
-      std::cout<< "here\n";
-      var->dump();
       privateReductionVariables[i] = var;
-      if(isInScanRegion)
-        ompCodeGen.privateReductionVariables[i] = var;
+      if(isInScanRegion) {
+        ompCodeGen.privateReductionVariables[i] = 
+        moduleTranslation.lookupValue(loop.getReductionVars()[i]);
+        ompCodeGen.originalReductionVariables[i] = var;
+      }
       reductionVariableMap.try_emplace(loop.getReductionVars()[i], var);
     }
   }
@@ -1503,10 +1504,10 @@ static LogicalResult emitScanBasedDirective(
 
     ompCodeGen.OMPFirstScanLoop = false;
     SecondGen(builder);
-  auto CurFn = builder.GetInsertBlock()->getParent();
-    for(auto &bb : *CurFn){
-      bb.dump();
-    }
+  //auto CurFn = builder.GetInsertBlock()->getParent();
+  //  for(auto &bb : *CurFn){
+  //    bb.dump();
+  //  }
     return success();
 }
 
@@ -1517,6 +1518,27 @@ static LogicalResult emitScanBasedDirectiveFinals(
     llvm::function_ref<llvm::Value *(llvm::IRBuilderBase &)> NumIteratorsGen,
     SmallVector<omp::DeclareReductionOp> reductionDecls) {
       
+    llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
+      NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
+  llvm::Value *OMPLast = builder.CreateNSWSub(
+      OMPScanNumIterations,
+      llvm::ConstantInt::get(OMPScanNumIterations->getType(), 1, /*isSigned=*/false));
+  llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
+      unsigned int defaultAS =
+         ompBuilder->M.getDataLayout().getProgramAddressSpace();
+    for (int i=0; i<reductionDecls.size(); i++) {
+      auto buff = ompCodeGen.ScanBuffs[reductionDecls[i]];
+          //newV = builder.CreateLoad(builder.getPtrTy(), newV);
+
+        //if (!offsetIdx.empty())
+        auto srcTy = moduleTranslation.convertType(reductionDecls[i].getType());
+          auto val = builder.CreateInBoundsGEP(srcTy, buff, OMPLast, "arrayOffset" );
+         auto src = builder.CreatePointerBitCastOrAddrSpaceCast(
+        val, srcTy->getPointerTo(defaultAS));
+
+  builder.CreateStore(src, ompCodeGen.originalReductionVariables[i]);
+
+    }
       
       return success();    
 }
@@ -2150,6 +2172,8 @@ convertWorkshareLoop(Operation &opInst, llvm::IRBuilderBase &builder,
       wsloopOp.getNumReductionVars());
   ompCodeGen.privateReductionVariables.resize(wsloopOp.getNumReductionVars());
   ompCodeGen.privateReductionVariables.reserve(wsloopOp.getNumReductionVars());
+  ompCodeGen.originalReductionVariables.resize(wsloopOp.getNumReductionVars());
+  ompCodeGen.originalReductionVariables.reserve(wsloopOp.getNumReductionVars());
   DenseMap<Value, llvm::Value *> reductionVariableMap;
 
   MutableArrayRef<BlockArgument> reductionArgs =
@@ -2296,6 +2320,13 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   SmallVector<omp::DeclareReductionOp> reductionDecls;
   collectReductionDecls(wsloopOp, reductionDecls);
   auto loopOp = cast<omp::LoopNestOp>(wsloopOp.getWrappedLoop());
+  auto iface = llvm::cast<mlir::omp::BlockArgOpenMPOpInterface>(opInst);
+  for(mlir::Value &val: iface.getReductionBlockArgs()){
+    val.dump();
+  }
+  for(const mlir::Value &val: wsloopOp.getReductionVars()){
+    val.dump();
+  }
   bool isInScanRegion = wsloopOp.getReductionMod() && (wsloopOp.getReductionMod().value() == mlir::omp::ReductionModifier::InScan);
     {
       if(isInScanRegion) {
@@ -2310,6 +2341,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
         };
         emitScanBasedDirectiveDecls(reductionDecls, builder, moduleTranslation, numIteratorsGenerator);
         emitScanBasedDirective(opInst, wsloopOp, builder, moduleTranslation, numIteratorsGenerator, FirstGen, SecondGen, reductionDecls);
+        emitScanBasedDirectiveFinals(opInst, wsloopOp, builder, moduleTranslation, numIteratorsGenerator, reductionDecls);
         return success();
       }
     }
