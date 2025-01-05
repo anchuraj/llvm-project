@@ -418,18 +418,7 @@ static llvm::Expected<llvm::BasicBlock *> convertOmpOpRegions(
       entryBlock = llvmBB;
       InsertPointTy curIp = builder.saveIP();
       builder.SetInsertPoint(llvmBB);
-      llvm::LLVMContext &llvmContext = builder.getContext();
-      //test code to create an extra parent
-      llvm::Value *testCondVal1 =
-        llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/100);
-      llvm::Value *testCondVal2 =
-        llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/0);
-      llvm::Value *CmpI = builder.CreateICmpUGE(testCondVal1, testCondVal2);
-      if(ompCodeGen.OMPFirstScanLoop)
-        builder.CreateCondBr(CmpI, ompCodeGen.OMPScanDispatch, ompCodeGen.OMPAfterScanBlock);
-      else
-        builder.CreateCondBr(CmpI, ompCodeGen.OMPScanDispatch, ompCodeGen.OMPBeforeScanBlock);
-      //builder.CreateBr(ompCodeGen.OMPScanDispatch);
+      builder.CreateBr(ompCodeGen.OMPScanDispatch);
       //test code to create an extra parent end
       llvmBB = ompCodeGen.OMPBeforeScanBlock;
       builder.restoreIP(curIp);
@@ -1504,10 +1493,10 @@ static LogicalResult emitScanBasedDirective(
 
     ompCodeGen.OMPFirstScanLoop = false;
     SecondGen(builder);
-  //auto CurFn = builder.GetInsertBlock()->getParent();
-  //  for(auto &bb : *CurFn){
-  //    bb.dump();
-  //  }
+  auto CurFn = builder.GetInsertBlock()->getParent();
+    for(auto &bb : *CurFn){
+      bb.dump();
+    }
     return success();
 }
 
@@ -1583,10 +1572,9 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   SmallVector<omp::DeclareReductionOp> reductionDecls;
   collectReductionDecls(wsLoopOp, reductionDecls);
 
-  if (!IsInclusive) {
-    builder.CreateBr(ompCodeGen.continueBlocks.back()/*redo*/);
-    //emitBlock(builder, ompCodeGen.OMPScanExitBlock);
-  }
+  //if (!IsInclusive) {
+  //  builder.CreateBr(ompCodeGen.continueBlocks.back()/*redo*/);
+  //}
   if (ompCodeGen.OMPFirstScanLoop) {
     assert(!ompCodeGen.privateReductionVariables.empty());
     // Emit buffer[i] = red; at the end of the input phase.
@@ -1607,12 +1595,6 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
   //ompCodeGen.OMPAfterScanBlock //= createBasicBlock(builder, "omp.after.scan.bb");
   //= splitBB(builder, false, "omp.after.scan.bb");
   llvm::LLVMContext &llvmContext = builder.getContext();
-  //test code to create an extra parent
-  llvm::Value *testCondVal1 =
-    llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/0);
-  llvm::Value *testCondVal2 =
-    llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/100);
-  llvm::Value *CmpI = builder.CreateICmpUGE(testCondVal2, testCondVal1);
   builder.CreateBr(ompCodeGen.continueBlocks.back());
   //builder.CreateCondBr(CmpI, ompCodeGen.continueBlocks.back(), ompCodeGen.OMPAfterScanBlock); 
   //pop back
@@ -1656,20 +1638,25 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
 
     }
     if (!IsInclusive) {
+      builder.CreateBr(ExclusiveExitBB);
       emitBlock(builder, ExclusiveExitBB);
+      builder.SetInsertPoint(ExclusiveExitBB);
     }
   }
   //builder.CreateBr(ompCodeGen.OMPScanDispatch);
   //builder.CreateBr((ompCodeGen.OMPFirstScanLoop == IsInclusive) ? ompCodeGen.OMPBeforeScanBlock
   //                                             : ompCodeGen.OMPAfterScanBlock);
   //emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
-      emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
+  emitBlock(builder, ompCodeGen.OMPAfterScanBlock);
+  llvm::Value *testCondVal1 =
+    llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/100);
+  llvm::Value *testCondVal2 =
+    llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvmContext), /*V=*/0);
+  llvm::Value *CmpI = builder.CreateICmpUGE(testCondVal1, testCondVal2);
   if(ompCodeGen.OMPFirstScanLoop == IsInclusive) {
-    builder.CreateBr(ompCodeGen.OMPBeforeScanBlock);
-    //builder.SetInsertPoint(ompCodeGen.OMPScanExitBlock);
-    //ompCodeGen.OMPScanDispatch->getTerminator()->setSuccessor(0, ompCodeGen.OMPBeforeScanBlock);
+    builder.CreateCondBr(CmpI, ompCodeGen.OMPBeforeScanBlock, ompCodeGen.OMPAfterScanBlock);
   }else {
-    builder.CreateBr(ompCodeGen.OMPAfterScanBlock);
+    builder.CreateCondBr(CmpI, ompCodeGen.OMPAfterScanBlock, ompCodeGen.OMPBeforeScanBlock);
   }
   builder.SetInsertPoint(ompCodeGen.OMPAfterScanBlock);
   return success();
