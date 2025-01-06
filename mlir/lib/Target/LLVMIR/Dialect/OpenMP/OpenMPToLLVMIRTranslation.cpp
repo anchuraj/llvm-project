@@ -1338,6 +1338,39 @@ static llvm::CallInst * EmitNounwindRuntimeCall(llvm::IRBuilderBase &builder, ll
   return call;
 }
 
+//static void EmitReduction(){
+//  switch (RMWOp) {
+//  case AtomicRMWInst::Add:
+//    return Builder.CreateAdd(Src1, Src2);
+//  case AtomicRMWInst::Sub:
+//    return Builder.CreateSub(Src1, Src2);
+//  case AtomicRMWInst::And:
+//    return Builder.CreateAnd(Src1, Src2);
+//  case AtomicRMWInst::Nand:
+//    return Builder.CreateNeg(Builder.CreateAnd(Src1, Src2));
+//  case AtomicRMWInst::Or:
+//    return Builder.CreateOr(Src1, Src2);
+//  case AtomicRMWInst::Xor:
+//    return Builder.CreateXor(Src1, Src2);
+//  case AtomicRMWInst::Xchg:
+//  case AtomicRMWInst::FAdd:
+//  case AtomicRMWInst::FSub:
+//  case AtomicRMWInst::BAD_BINOP:
+//  case AtomicRMWInst::Max:
+//  case AtomicRMWInst::Min:
+//  case AtomicRMWInst::UMax:
+//  case AtomicRMWInst::UMin:
+//  case AtomicRMWInst::FMax:
+//  case AtomicRMWInst::FMin:
+//  case AtomicRMWInst::UIncWrap:
+//  case AtomicRMWInst::UDecWrap:
+//  case AtomicRMWInst::USubCond:
+//  case AtomicRMWInst::USubSat:
+//    llvm_unreachable("Unsupported atomic update operation");
+//  }
+//
+//
+//}
 
 
 static LogicalResult emitScanBasedDirective(
@@ -1347,6 +1380,10 @@ static LogicalResult emitScanBasedDirective(
     llvm::function_ref<LogicalResult(llvm::IRBuilderBase &)> FirstGen,
     llvm::function_ref<LogicalResult(llvm::IRBuilderBase &)> SecondGen,
     SmallVector<omp::DeclareReductionOp> reductionDecls) {
+
+    auto sym = (wsLoopOp.getReductionSyms()->begin());
+    reductionDecls.begin()->getAccumulatorType().dump();
+    reductionDecls.begin()->getOperation()->dump();
 
     llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
       NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
@@ -1415,10 +1452,10 @@ static LogicalResult emitScanBasedDirective(
       llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
       unsigned int defaultAS =
          ompBuilder->M.getDataLayout().getProgramAddressSpace();
-      for (auto & reductionDecl : reductionDecls) {
+      for (int i=0; i<reductionDecls.size(); i++) {
+           auto &reductionDecl = reductionDecls[i];
         auto buff = ompCodeGen.ScanBuffs[reductionDecl];
             //newV = builder.CreateLoad(builder.getPtrTy(), newV);
-
           //if (!offsetIdx.empty())
           auto destTy = moduleTranslation.convertType(reductionDecl.getType());
             auto lhsPtr = builder.CreateInBoundsGEP(destTy, buff, IVal, "arrayOffset" );
@@ -1428,8 +1465,17 @@ static LogicalResult emitScanBasedDirective(
             auto rhs = builder.CreateLoad(destTy, rhsPtr);
           auto lhsAddr = builder.CreatePointerBitCastOrAddrSpaceCast(
           lhsPtr, rhs->getType()->getPointerTo(defaultAS));
+          auto gen = makeReductionGen(reductionDecl, builder, moduleTranslation);
+          llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
+          llvm::Value *result;
+  llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
+          gen(builder.saveIP(), lhs, rhs, result);
 
-          builder.CreateStore(rhs, lhsAddr);
+  if (failed(handleError(afterIP, opInst)))
+    return failure();
+  builder.restoreIP(*afterIP);
+          //convert to map
+          builder.CreateStore(result, lhsAddr);
 
       }
       llvm::Value *NextIVal =
@@ -1554,6 +1600,7 @@ static void emitScanBasedDirectiveDecls(
   }
 }
 
+
 static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderBase &builder,
  LLVM::ModuleTranslation &moduleTranslation) {
   llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
@@ -1571,16 +1618,14 @@ static LogicalResult EmitOMPScanDirective(mlir::omp::ScanOp &S, llvm::IRBuilderB
     // Emit buffer[i] = red; at the end of the input phase.
     for (int i=0; i<reductionDecls.size(); i++) {
       auto buff = ompCodeGen.ScanBuffs[reductionDecls[i]];
-          //newV = builder.CreateLoad(builder.getPtrTy(), newV);
 
-        //if (!offsetIdx.empty())
-        auto destTy = moduleTranslation.convertType(reductionDecls[i].getType());
-        auto val = builder.CreateInBoundsGEP(destTy, buff, iv, "arrayOffset" );
-        auto src = builder.CreateLoad(destTy, ompCodeGen.privateReductionVariables[i]);
-        auto dest = builder.CreatePointerBitCastOrAddrSpaceCast(
-          val, destTy->getPointerTo(defaultAS));
+      auto destTy = moduleTranslation.convertType(reductionDecls[i].getType());
+      auto val = builder.CreateInBoundsGEP(destTy, buff, iv, "arrayOffset" );
+      auto src = builder.CreateLoad(destTy, ompCodeGen.privateReductionVariables[i]);
+      auto dest = builder.CreatePointerBitCastOrAddrSpaceCast(
+        val, destTy->getPointerTo(defaultAS));
 
-  builder.CreateStore(src, dest);
+      builder.CreateStore(src, dest);
 
     }
   }
