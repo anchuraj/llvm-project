@@ -1381,13 +1381,9 @@ static LogicalResult emitScanBasedDirective(
     llvm::function_ref<LogicalResult(llvm::IRBuilderBase &)> SecondGen,
     SmallVector<omp::DeclareReductionOp> reductionDecls) {
 
-    auto sym = (wsLoopOp.getReductionSyms()->begin());
-    reductionDecls.begin()->getAccumulatorType().dump();
-    reductionDecls.begin()->getOperation()->dump();
 
     llvm::Value *OMPScanNumIterations = builder.CreateIntCast(
       NumIteratorsGen(builder), builder.getInt64Ty(), /*isSigned=*/false);
-    OMPCodeGen::ParentLoopDirectiveForScanRegion ScanRegion(wsLoopOp);
     {
       // Emit loop with input phase:
       // #pragma omp ...

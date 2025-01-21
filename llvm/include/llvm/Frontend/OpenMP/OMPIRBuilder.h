@@ -30,6 +30,7 @@
 namespace llvm {
 class CanonicalLoopInfo;
 struct TargetRegionEntryInfo;
+class ScanInfo;
 class OffloadEntriesInfoManager;
 class OpenMPIRBuilder;
 
@@ -507,6 +508,28 @@ public:
   /// used in the OpenMPIRBuilder generated from OMPKinds.def.
   void initialize();
 
+  llvm::CallInst * emitRuntimeCallCC(llvm::FunctionCallee callee,
+                                     ArrayRef<llvm::Value *> args,
+                                    const llvm::Twine &name);
+  llvm::CallInst * emitNoUnwindRuntimeCall(llvm::FunctionCallee callee,
+                                     ArrayRef<llvm::Value *> args,
+                                    const llvm::Twine &name);
+  void emitScanBasedDirectiveDeclsIR(
+     llvm::Value * span,
+     SmallVector<llvm::Value *> reductionVars);
+void emitScanBasedDirectiveFinalsIR(
+  SmallVector<llvm::Value *> reductionVars,
+  llvm::Value *  span);
+  void emitScanBasedDirectiveIR(
+      llvm::Value * span,
+      llvm::function_ref<Expected<CanonicalLoopInfo *>()> FirstGen,
+      llvm::function_ref<Expected<CanonicalLoopInfo *>()> SecondGen,
+      llvm::function_ref<llvm::Value *()> ReductionGen,
+      SmallVector<llvm::Value *> reductionVals); 
+  void createScanBBs();
+
+
+
   void setConfig(OpenMPIRBuilderConfig C) { Config = C; }
 
   /// Finalize the underlying module, e.g., by outlining regions.
@@ -778,7 +801,7 @@ public:
   Expected<CanonicalLoopInfo *> createCanonicalLoop(
       const LocationDescription &Loc, LoopBodyGenCallbackTy BodyGenCB,
       Value *Start, Value *Stop, Value *Step, bool IsSigned, bool InclusiveStop,
-      InsertPointTy ComputeIP = {}, const Twine &Name = "loop");
+      InsertPointTy ComputeIP = {}, const Twine &Name = "loop", bool InScan = false);
 
   /// Collapse a loop nest into a single loop.
   ///
@@ -2142,7 +2165,7 @@ public:
   // If BB has no use then delete it and return. Else place BB after the current
   // block, if possible, or else at the end of the function. Also add a branch
   // from current block to BB if current block does not have a terminator.
-  void emitBlock(BasicBlock *BB, Function *CurFn, bool IsFinished = false);
+  void emitBB(BasicBlock *BB, Function *CurFn, bool IsFinished = false);
 
   /// Emits code for OpenMP 'if' clause using specified \a BodyGenCallbackTy
   /// Here is the logic:
@@ -2570,6 +2593,10 @@ public:
                                                 FinalizeCallbackTy FiniCB,
                                                 bool IsThreads);
 
+  InsertPointTy createScan(const LocationDescription &Loc,
+                                    InsertPointTy AllocaIP,
+                                    ArrayRef<llvm::Value *> ScanVars,
+                                    const Twine &Name, bool IsInclusive);
   /// Generator for '#omp sections'
   ///
   /// \param Loc The insert and source location description.
@@ -3568,6 +3595,21 @@ public:
   /// requirements of an OpenMP canonical loop anymore.
   void invalidate();
 };
+
+class ScanInfo {
+    public:
+      llvm::BasicBlock *OMPBeforeScanBlock = nullptr;
+      llvm::BasicBlock *OMPAfterScanBlock = nullptr;
+      llvm::BasicBlock *OMPScanExitBlock = nullptr;
+      llvm::BasicBlock *OMPScanDispatch = nullptr;
+      bool OMPFirstScanLoop = false; 
+      llvm::SmallDenseMap<llvm::Value *, llvm::Value *> ReductionVarToScanBuffs;      
+      SmallVector<llvm::Value *> privateReductionVariables;
+      SmallVector<llvm::Value *> originalReductionVariables;
+      llvm::Value *iv;
+      SmallVector<llvm::BasicBlock *> continueBlocks;
+};
+
 
 } // end namespace llvm
 
