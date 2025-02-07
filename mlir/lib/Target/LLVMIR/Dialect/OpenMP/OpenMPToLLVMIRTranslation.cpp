@@ -226,9 +226,9 @@ static LogicalResult checkImplementationStatus(Operation &op) {
       if (!op.getReductionVars().empty() || op.getReductionByref() ||
           op.getReductionSyms())
         result = todo("reduction");
-    if (op.getReductionMod() &&
-        op.getReductionMod().value() != omp::ReductionModifier::defaultmod)
-      result = todo("reduction with modifier");
+    //if (op.getReductionMod() &&
+    //    op.getReductionMod().value() != omp::ReductionModifier::defaultmod)
+    //  result = todo("reduction with modifier");
   };
   auto checkTaskReduction = [&todo](auto op, LogicalResult &result) {
     if (!op.getTaskReductionVars().empty() || op.getTaskReductionByref() ||
@@ -2013,10 +2013,12 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       computeIP = loopInfos.front()->getPreheaderIP();
     }
 
+     bool isInScanRegion = wsloopOp.getReductionMod() && (wsloopOp.getReductionMod().value() == mlir::omp::ReductionModifier::inscan);
+
     llvm::Expected<llvm::CanonicalLoopInfo *> loopResult =
         ompBuilder->createCanonicalLoop(
             loc, bodyGen, lowerBound, upperBound, step,
-            /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP);
+            /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP, "loop", isInScanRegion);
 
     if (failed(handleError(loopResult, *loopOp)))
       return failure();
@@ -4639,6 +4641,9 @@ convertHostOrTargetOperation(Operation *op, llvm::IRBuilderBase &builder,
       })
       .Case([&](omp::WsloopOp) {
         return convertOmpWsloop(*op, builder, moduleTranslation);
+      })
+      .Case([&](omp::ScanOp) {
+        return success();
       })
       .Case([&](omp::SimdOp) {
         return convertOmpSimd(*op, builder, moduleTranslation);
