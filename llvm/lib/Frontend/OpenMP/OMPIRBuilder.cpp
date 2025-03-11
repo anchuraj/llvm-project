@@ -4067,7 +4067,7 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
       auto dest = Builder.CreatePointerBitCastOrAddrSpaceCast(
           ScanVars[i], destTy->getPointerTo(defaultAS));
 
-      Builder.CreateStore(newV, dest);
+      //Builder.CreateStore(newV, dest);
     }
     if (!IsInclusive) {
       Builder.CreateBr(ExclusiveExitBB);
@@ -4095,11 +4095,13 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
 void OpenMPIRBuilder::emitScanBasedDirectiveDeclsIR(
     llvm::Value *span, ArrayRef<llvm::Value *> ScanVars) {
 
+  ConstantInt *One = ConstantInt::get(Builder.getInt32Ty(), 1);
+  llvm::Value *allocSpan = Builder.CreateAdd(span, One);
   for (auto &scanVar : ScanVars) {
     // TODO: remove after all users of by-ref are updated to use the alloc
     // region: Allocate reduction variable (which is a pointer to the real
     // reduciton variable allocated in the inlined region)
-    llvm::Value *buff = Builder.CreateAlloca(scanVar->getType(), span, "vla");
+    llvm::Value *buff = Builder.CreateAlloca(scanVar->getType(), allocSpan, "vla");
     scanInfo.ReductionVarToScanBuffs[scanVar] = buff;
   }
 }
