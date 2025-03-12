@@ -2371,11 +2371,20 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
       moduleTranslation.getOpenMPBuilder()->createScan(
           ompLoc, allocaIP, llvmScanVars, "scan", isInclusive);
-
   if (failed(handleError(afterIP, opInst)))
     return failure();
 
   builder.restoreIP(*afterIP);
+  auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin(); 
+  auto &ins = *(firstBlock.begin());
+    if (isa<LLVM::StoreOp>(ins)) {
+        
+         LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
+         auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
+         auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
+         builder.CreateStore(src, dest);
+    }
+
   return success();
 }
 

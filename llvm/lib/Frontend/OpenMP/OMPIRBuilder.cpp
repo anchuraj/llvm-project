@@ -4027,7 +4027,7 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
     for (int i = 0; i < ScanVars.size(); i++) {
       auto buff = scanInfo.ReductionVarToScanBuffs[ScanVars[i]];
 
-      auto destTy = ScanVars[i]->getType();
+      auto destTy = Builder.getInt32Ty();//ScanVars[i]->getType();
       auto val = Builder.CreateInBoundsGEP(destTy, buff, iv, "arrayOffset");
       auto src = Builder.CreateLoad(destTy, ScanVars[i]);
       auto dest = Builder.CreatePointerBitCastOrAddrSpaceCast(
@@ -4062,12 +4062,12 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
       // newV = Builder.CreateLoad(builder.getPtrTy(), newV);
 
       // if (!offsetIdx.empty())
-      auto destTy = ScanVars[i]->getType();
+      auto destTy = Builder.getInt32Ty();//ScanVars[i]->getType();
       auto newV = Builder.CreateInBoundsGEP(destTy, buff, iv, "arrayOffset");
       auto dest = Builder.CreatePointerBitCastOrAddrSpaceCast(
           ScanVars[i], destTy->getPointerTo(defaultAS));
 
-      //Builder.CreateStore(newV, dest);
+      Builder.CreateStore(newV, dest);
     }
     if (!IsInclusive) {
       Builder.CreateBr(ExclusiveExitBB);
@@ -4101,7 +4101,7 @@ void OpenMPIRBuilder::emitScanBasedDirectiveDeclsIR(
     // TODO: remove after all users of by-ref are updated to use the alloc
     // region: Allocate reduction variable (which is a pointer to the real
     // reduciton variable allocated in the inlined region)
-    llvm::Value *buff = Builder.CreateAlloca(scanVar->getType(), allocSpan, "vla");
+    llvm::Value *buff = Builder.CreateAlloca(Builder.getInt32Ty(), allocSpan, "vla");
     scanInfo.ReductionVarToScanBuffs[scanVar] = buff;
   }
 }
