@@ -2026,8 +2026,10 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
 
       if (failed(handleError(loopResults, *loopOp)))
         return failure();
-//      auto beforeLoop = loopResults->front();
-//      auto afterLoop = loopResults->back();
+      auto beforeLoop = loopResults->front();
+      auto afterLoop = loopResults->back();
+      auto beforeLoopIp = beforeLoop->getAfterIP();
+      auto afterLoopIp = afterLoop->getAfterIP();
 //      loopInfos.push_back(beforeLoop);
 //      // Collapse loops. Store the insertion point because LoopInfos may get
 //      // invalidated.
@@ -2035,49 +2037,48 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
 //      llvm::CanonicalLoopInfo *loopInfo =
 //          ompBuilder->collapseLoops(ompLoc.DL, loopInfos, {});
 //
-//      allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
-//
-//      // TODO: Handle doacross loops when the ordered clause has a parameter.
-//      bool isOrdered = wsloopOp.getOrdered().has_value();
-//      std::optional<omp::ScheduleModifier> scheduleMod =
-//          wsloopOp.getScheduleMod();
-//      bool isSimd = wsloopOp.getScheduleSimd();
-//
-//      llvm::OpenMPIRBuilder::InsertPointOrErrorTy wsloopIP =
-//          ompBuilder->applyWorkshareLoop(
-//              ompLoc.DL, loopInfo, allocaIP, !wsloopOp.getNowait(),
-//              convertToScheduleKind(schedule), chunk, isSimd,
-//              scheduleMod == omp::ScheduleModifier::monotonic,
-//              scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
-//
-//      if (failed(handleError(wsloopIP, opInst)))
-//        return failure();
+      allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
+
+      // TODO: Handle doacross loops when the ordered clause has a parameter.
+      bool isOrdered = wsloopOp.getOrdered().has_value();
+      std::optional<omp::ScheduleModifier> scheduleMod =
+          wsloopOp.getScheduleMod();
+      bool isSimd = wsloopOp.getScheduleSimd();
+
+      llvm::OpenMPIRBuilder::InsertPointOrErrorTy wsloopIP =
+          ompBuilder->applyWorkshareLoop(
+              ompLoc.DL, beforeLoop, allocaIP, !wsloopOp.getNowait(),
+              convertToScheduleKind(schedule), chunk, isSimd,
+              scheduleMod == omp::ScheduleModifier::monotonic,
+              scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
+
+      if (failed(handleError(wsloopIP, opInst)))
+        return failure();
 //
 //      // Continue building IR after the loop. Note that the LoopInfo returned by
 //      // `collapseLoops` points inside the outermost loop and is intended for
 //      // potential further loop transformations. Use the insertion point stored
 //      // before collapsing loops instead.
-//      builder.restoreIP(afterIP);
+      builder.restoreIP(beforeLoopIp);
 //      loopInfos.pop_back();
 //
       // builder.restoreIP(afterIP);
-      auto afterIP = loopResults->back()->getAfterIP();
-      //SmallVector<OwningReductionGen> owningReductionGens;
-      //SmallVector<OwningAtomicReductionGen> owningAtomicReductionGens;
-      //SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos;
-      //collectReductionInfo(wsloopOp, builder, moduleTranslation, reductionDecls,
-      //                     owningReductionGens, owningAtomicReductionGens,
-      //                     privateReductionVariables, reductionInfos);
-      //llvm::BasicBlock *cont = splitBB(builder, false, "omp.scan.loop.cont");
-      //llvm::OpenMPIRBuilder::InsertPointOrErrorTy redIP =
-      //    ompBuilder->emitScanReduction(builder.saveIP(), afterIP,
-      //                                  reductionInfos);
-      //if (failed(handleError(redIP, opInst)))
-      //  return failure();
+      SmallVector<OwningReductionGen> owningReductionGens;
+      SmallVector<OwningAtomicReductionGen> owningAtomicReductionGens;
+      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos;
+      collectReductionInfo(wsloopOp, builder, moduleTranslation, reductionDecls,
+                           owningReductionGens, owningAtomicReductionGens,
+                           privateReductionVariables, reductionInfos);
+      llvm::BasicBlock *cont = splitBB(builder, false, "omp.scan.loop.cont");
+      llvm::OpenMPIRBuilder::InsertPointOrErrorTy redIP =
+          ompBuilder->emitScanReduction(builder.saveIP(), afterLoopIp,
+                                        reductionInfos);
+      if (failed(handleError(redIP, opInst)))
+        return failure();
 
-      //builder.restoreIP(*redIP);
-      //builder.CreateBr(cont);
-      //builder.restoreIP(afterIP);
+      builder.restoreIP(*redIP);
+      builder.CreateBr(cont);
+      builder.SetInsertPoint(cont);
       //loopInfos.push_back(afterLoop);
       //// Collapse loops. Store the insertion point because LoopInfos may get
       //// invalidated.
@@ -2086,20 +2087,20 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
 
       //allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
 
-      //wsloopIP = ompBuilder->applyWorkshareLoop(
-      //    ompLoc.DL, loopInfo, allocaIP, !wsloopOp.getNowait(),
-      //    convertToScheduleKind(schedule), chunk, isSimd,
-      //    scheduleMod == omp::ScheduleModifier::monotonic,
-      //    scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
+      wsloopIP = ompBuilder->applyWorkshareLoop(
+          ompLoc.DL, afterLoop, allocaIP, !wsloopOp.getNowait(),
+          convertToScheduleKind(schedule), chunk, isSimd,
+          scheduleMod == omp::ScheduleModifier::monotonic,
+          scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered);
 
-      //if (failed(handleError(wsloopIP, opInst)))
-      //  return failure();
+      if (failed(handleError(wsloopIP, opInst)))
+        return failure();
 
       // Continue building IR after the loop. Note that the LoopInfo returned by
       // `collapseLoops` points inside the outermost loop and is intended for
       // potential further loop transformations. Use the insertion point stored
       // before collapsing loops instead.
-       builder.restoreIP(afterIP);
+       builder.restoreIP(afterLoopIp);
       //loopInfos.pop_back();
     } else {
       llvm::Expected<llvm::CanonicalLoopInfo *> loopResult =
