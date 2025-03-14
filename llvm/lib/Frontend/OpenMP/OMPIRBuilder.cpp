@@ -4042,6 +4042,14 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
   // emitBlock(scanInfo.OMPScanDispatch, Builder.GetInsertBlock()->getParent());
   Builder.SetInsertPoint(scanInfo.OMPScanDispatch);
 
+  ConstantInt *Zero = ConstantInt::get(Builder.getInt32Ty(), 0);
+  for (int i = 0; i < ScanVars.size(); i++) {
+      auto destTy = Builder.getInt32Ty();//ScanVars[i]->getType();
+      auto dest = Builder.CreatePointerBitCastOrAddrSpaceCast(
+          ScanVars[i], destTy->getPointerTo(defaultAS));
+      Builder.CreateStore(Zero, dest);
+  }
+
   if (!scanInfo.OMPFirstScanLoop) {
     iv = scanInfo.iv;
     // Emit red = buffer[i]; at the entrance to the scan phase.
@@ -4063,7 +4071,8 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
 
       // if (!offsetIdx.empty())
       auto destTy = Builder.getInt32Ty();//ScanVars[i]->getType();
-      auto newV = Builder.CreateInBoundsGEP(destTy, buff, iv, "arrayOffset");
+      auto newVPtr = Builder.CreateInBoundsGEP(destTy, buff, iv, "arrayOffset");
+      auto newV = Builder.CreateLoad(destTy,newVPtr);
       auto dest = Builder.CreatePointerBitCastOrAddrSpaceCast(
           ScanVars[i], destTy->getPointerTo(defaultAS));
 
