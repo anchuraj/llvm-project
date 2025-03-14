@@ -4118,8 +4118,11 @@ void OpenMPIRBuilder::emitScanBasedDirectiveDeclsIR(
 void OpenMPIRBuilder::emitScanBasedDirectiveFinalsIR(
     SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos) {
   llvm::Value *span = scanInfo.span;
-  llvm::Value *OMPLast = Builder.CreateNSWSub(
+  //llvm::Value *OMPLast = span;
+  llvm::Value *OMPLast = Builder.CreateNSWAdd(
       span, llvm::ConstantInt::get(span->getType(), 1, /*isSigned=*/false));
+  //llvm::Value *OMPLast = Builder.CreateNSWSub(
+  //    span, llvm::ConstantInt::get(span->getType(), 1, /*isSigned=*/false));
   unsigned int defaultAS = M.getDataLayout().getProgramAddressSpace();
   for (int i = 0; i < reductionInfos.size(); i++) {
     auto privateVar = reductionInfos[i].PrivateVariable;
@@ -4145,7 +4148,7 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
   if (!updateToLocation(Loc))
     return Loc.IP;
 
-  llvm::Value *span = scanInfo.span;
+  llvm::Value *spanDiff = scanInfo.span;
   Builder.restoreIP(FinalizeIP);
   emitScanBasedDirectiveFinalsIR(reductionInfos);
   FinalizeIP = Builder.saveIP();
@@ -4165,6 +4168,8 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
       Builder.GetInsertBlock()->getModule(),
       (llvm::Intrinsic::ID)llvm::Intrinsic::log2, Builder.getDoubleTy());
   llvm::BasicBlock *InputBB = Builder.GetInsertBlock();
+  ConstantInt *One = ConstantInt::get(Builder.getInt32Ty(), 2);
+  llvm::Value *span = Builder.CreateAdd(spanDiff, One);
   // auto terminator = InputBB->getTerminator();
   // llvm::BasicBlock *contBlock = terminator->getSuccessor(0);
   // terminator->setSuccessor(0, LogInit);
