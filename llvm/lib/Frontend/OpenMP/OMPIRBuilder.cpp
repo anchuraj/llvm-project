@@ -3973,8 +3973,6 @@ OpenMPIRBuilder::emitNoUnwindRuntimeCall(llvm::FunctionCallee callee,
 OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
     const LocationDescription &Loc, InsertPointTy AllocaIP,
     ArrayRef<llvm::Value *> ScanVars, const Twine &Name, bool IsInclusive) {
-  if (!updateToLocation(Loc))
-    return Loc.IP;
   if (scanInfo.OMPFirstScanLoop) {
     Builder.restoreIP(AllocaIP);
     emitScanBasedDirectiveDeclsIR(scanInfo.span, ScanVars);
@@ -4086,9 +4084,6 @@ void OpenMPIRBuilder::emitScanBasedDirectiveFinalsIR(
 OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
     const LocationDescription &Loc, InsertPointTy &FinalizeIP,
     SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos) {
-
-  if (!updateToLocation(Loc))
-    return Loc.IP;
 
   llvm::Value *spanDiff = scanInfo.span;
   Builder.restoreIP(FinalizeIP);

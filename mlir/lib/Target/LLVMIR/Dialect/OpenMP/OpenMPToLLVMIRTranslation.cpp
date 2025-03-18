@@ -226,9 +226,9 @@ static LogicalResult checkImplementationStatus(Operation &op) {
       if (!op.getReductionVars().empty() || op.getReductionByref() ||
           op.getReductionSyms())
         result = todo("reduction");
-    // if (op.getReductionMod() &&
-    //     op.getReductionMod().value() != omp::ReductionModifier::defaultmod)
-    //   result = todo("reduction with modifier");
+     if (op.getReductionMod() &&
+         op.getReductionMod().value() == omp::ReductionModifier::task)
+       result = todo("reduction with task modifier");
   };
   auto checkTaskReduction = [&todo](auto op, LogicalResult &result) {
     if (!op.getTaskReductionVars().empty() || op.getTaskReductionByref() ||
@@ -2351,13 +2351,11 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin(); 
   auto &ins = *(firstBlock.begin());
     if (isa<LLVM::StoreOp>(ins)) {
-        
          LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
          auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
          auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
          builder.CreateStore(src, dest);
     }
-
   return success();
 }
 
