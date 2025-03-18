@@ -2030,13 +2030,6 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       auto afterLoop = loopResults->back();
       auto beforeLoopIp = beforeLoop->getAfterIP();
       auto afterLoopIp = afterLoop->getAfterIP();
-//      loopInfos.push_back(beforeLoop);
-//      // Collapse loops. Store the insertion point because LoopInfos may get
-//      // invalidated.
-//      llvm::IRBuilderBase::InsertPoint afterIP = beforeLoop->getAfterIP();
-//      llvm::CanonicalLoopInfo *loopInfo =
-//          ompBuilder->collapseLoops(ompLoc.DL, loopInfos, {});
-//
       allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
 
       // TODO: Handle doacross loops when the ordered clause has a parameter.
@@ -2054,15 +2047,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
 
       if (failed(handleError(wsloopIP, opInst)))
         return failure();
-//
-//      // Continue building IR after the loop. Note that the LoopInfo returned by
-//      // `collapseLoops` points inside the outermost loop and is intended for
-//      // potential further loop transformations. Use the insertion point stored
-//      // before collapsing loops instead.
       builder.restoreIP(beforeLoopIp);
-//      loopInfos.pop_back();
-//
-      // builder.restoreIP(afterIP);
       SmallVector<OwningReductionGen> owningReductionGens;
       SmallVector<OwningAtomicReductionGen> owningAtomicReductionGens;
       SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos;
@@ -2079,14 +2064,6 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       builder.restoreIP(*redIP);
       builder.CreateBr(cont);
       builder.SetInsertPoint(cont);
-      //loopInfos.push_back(afterLoop);
-      //// Collapse loops. Store the insertion point because LoopInfos may get
-      //// invalidated.
-      //// afterIP = afterLoop->getAfterIP();
-      //loopInfo = ompBuilder->collapseLoops(ompLoc.DL, loopInfos, {});
-
-      //allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
-
       wsloopIP = ompBuilder->applyWorkshareLoop(
           ompLoc.DL, afterLoop, allocaIP, !wsloopOp.getNowait(),
           convertToScheduleKind(schedule), chunk, isSimd,
@@ -2096,12 +2073,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
       if (failed(handleError(wsloopIP, opInst)))
         return failure();
 
-      // Continue building IR after the loop. Note that the LoopInfo returned by
-      // `collapseLoops` points inside the outermost loop and is intended for
-      // potential further loop transformations. Use the insertion point stored
-      // before collapsing loops instead.
-       builder.restoreIP(afterLoopIp);
-      //loopInfos.pop_back();
+      builder.restoreIP(afterLoopIp);
     } else {
       llvm::Expected<llvm::CanonicalLoopInfo *> loopResult =
           ompBuilder->createCanonicalLoop(

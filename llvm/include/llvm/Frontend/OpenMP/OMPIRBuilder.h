@@ -509,15 +509,6 @@ public:
   /// used in the OpenMPIRBuilder generated from OMPKinds.def.
   void initialize();
 
-  llvm::CallInst *emitRuntimeCallCC(llvm::FunctionCallee callee,
-                                    ArrayRef<llvm::Value *> args,
-                                    const llvm::Twine &name);
-  llvm::CallInst *emitNoUnwindRuntimeCall(llvm::FunctionCallee callee,
-                                          ArrayRef<llvm::Value *> args,
-                                          const llvm::Twine &name);
-
-  void createScanBBs();
-
   void setConfig(OpenMPIRBuilderConfig C) { Config = C; }
 
   /// Finalize the underlying module, e.g., by outlining regions.
@@ -736,7 +727,7 @@ public:
   Expected<CanonicalLoopInfo *>
   createCanonicalLoop(const LocationDescription &Loc,
                       LoopBodyGenCallbackTy BodyGenCB, Value *TripCount,
-                      const Twine &Name = "loop", bool InScan = false);
+                      const Twine &Name = "loop");
 
   Expected<SmallVector<llvm::CanonicalLoopInfo *>> createCanonicalScanLoops(
       const LocationDescription &Loc, LoopBodyGenCallbackTy BodyGenCB,
@@ -1523,6 +1514,16 @@ private:
       ArrayRef<OpenMPIRBuilder::ReductionInfo> ReductionInfos,
       Function *ReduceFn, AttributeList FuncAttrs);
 
+  llvm::CallInst *emitNoUnwindRuntimeCall(llvm::FunctionCallee callee,
+                                          ArrayRef<llvm::Value *> args,
+                                          const llvm::Twine &name);
+
+  void createScanBBs();
+  void emitScanBasedDirectiveDeclsIR(llvm::Value *span,
+                                     ArrayRef<llvm::Value *> ScanVars);
+  void emitScanBasedDirectiveFinalsIR(
+      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos);
+
   /// This function emits a helper that gathers Reduce lists from the first
   /// lane of every active warp to lanes in the first warp.
   ///
@@ -2170,7 +2171,6 @@ public:
   // block, if possible, or else at the end of the function. Also add a branch
   // from current block to BB if current block does not have a terminator.
   void emitBlock(BasicBlock *BB, Function *CurFn, bool IsFinished = false);
-  void emitBB(BasicBlock *BB, Function *CurFn, bool IsFinished = false);
   /// Emits code for OpenMP 'if' clause using specified \a BodyGenCallbackTy
   /// Here is the logic:
   /// if (Cond) {
@@ -2601,10 +2601,6 @@ public:
                                   InsertPointTy AllocaIP,
                                   ArrayRef<llvm::Value *> ScanVars,
                                   const Twine &Name, bool IsInclusive);
-  void emitScanBasedDirectiveDeclsIR(llvm::Value *span,
-                                     ArrayRef<llvm::Value *> ScanVars);
-  void emitScanBasedDirectiveFinalsIR(
-      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos);
   /// Generator for '#omp critical'
   ///
   /// \param Loc The insert and source location description.

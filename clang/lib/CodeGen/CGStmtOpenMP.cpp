@@ -3879,16 +3879,16 @@ static void emitScanBasedDirective(
     auto DL1 = ApplyDebugLocation::CreateDefaultArtificial(CGF, S.getEndLoc());
     CGF.EmitBlock(ExitBB);
   };
-  //OpenMPDirectiveKind EKind = getEffectiveDirectiveKind(S);
-  //if (isOpenMPParallelDirective(EKind)) {
-  //  CGF.CGM.getOpenMPRuntime().emitMasterRegion(CGF, CodeGen, S.getBeginLoc());
-  //  CGF.CGM.getOpenMPRuntime().emitBarrierCall(
-  //      CGF, S.getBeginLoc(), OMPD_unknown, /*EmitChecks=*/false,
-  //      /*ForceSimpleCall=*/true);
-  //} else {
-  //  RegionCodeGenTy RCG(CodeGen);
-  //  RCG(CGF);
-  //}
+  OpenMPDirectiveKind EKind = getEffectiveDirectiveKind(S);
+  if (isOpenMPParallelDirective(EKind)) {
+    CGF.CGM.getOpenMPRuntime().emitMasterRegion(CGF, CodeGen, S.getBeginLoc());
+    CGF.CGM.getOpenMPRuntime().emitBarrierCall(
+        CGF, S.getBeginLoc(), OMPD_unknown, /*EmitChecks=*/false,
+        /*ForceSimpleCall=*/true);
+  } else {
+    RegionCodeGenTy RCG(CodeGen);
+    RCG(CGF);
+  }
 
   CGF.OMPFirstScanLoop = false;
   SecondGen(CGF);
