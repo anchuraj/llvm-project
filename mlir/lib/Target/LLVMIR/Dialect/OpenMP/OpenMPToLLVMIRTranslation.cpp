@@ -2072,8 +2072,19 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
 
       if (failed(handleError(wsloopIP, opInst)))
         return failure();
-
       builder.restoreIP(afterLoopIp);
+        // after the construct, deallocate private reduction variables
+      SmallVector<Region *> reductionRegions;
+      llvm::transform(reductionDecls, std::back_inserter(reductionRegions),
+                      [](omp::DeclareReductionOp reductionDecl) {
+                        return &reductionDecl.getCleanupRegion();
+                      });
+      if (failed(inlineOmpRegionCleanup(reductionRegions, privateReductionVariables,
+                                moduleTranslation, builder,
+                                "omp.reduction.cleanup"))) {
+        return failure();
+        //TODO: need to deallocate buffer.
+      }
     } else {
       llvm::Expected<llvm::CanonicalLoopInfo *> loopResult =
           ompBuilder->createCanonicalLoop(
@@ -2348,14 +2359,27 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
     return failure();
 
   builder.restoreIP(*afterIP);
-  auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin(); 
-  auto &ins = *(firstBlock.begin());
+
+  //TODO: The argument of LoopnestOp is stored into the index variable and  this variable is used
+  // across scan operation. However that makes the mlir invalid.(`Intra-iteration dependences from
+  // a statement in the structured block sequence that precede a scan directive to a statement in 
+  // the structured block sequence that follows a scan directive must not exist, except for 
+  // dependences for the list items specified in an inclusive or exclusive clause.`). The argument
+  // of LoopNestOp need to be loaded again after ScanOp again so mlir generated is valid.
+  auto parentOp = scanOp->getParentOp();
+  auto loopOp = cast<omp::LoopNestOp>(parentOp);
+  if(loopOp){
+    auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin();
+    auto &ins = *(firstBlock.begin());
     if (isa<LLVM::StoreOp>(ins)) {
-         LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
-         auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
-         auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
-         builder.CreateStore(src, dest);
+      LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
+      auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
+      if (src == moduleTranslation.lookupValue((loopOp.getRegion().getArguments())[0])) {
+        auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
+        builder.CreateStore(src, dest);
+      }
     }
+  }
   return success();
 }
 

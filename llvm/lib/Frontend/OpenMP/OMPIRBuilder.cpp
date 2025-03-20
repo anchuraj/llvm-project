@@ -4086,9 +4086,6 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
     SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> reductionInfos) {
 
   llvm::Value *spanDiff = scanInfo.span;
-  Builder.restoreIP(FinalizeIP);
-  emitScanBasedDirectiveFinalsIR(reductionInfos);
-  FinalizeIP = Builder.saveIP();
 
   if (!updateToLocation(Loc))
     return Loc.IP;
@@ -4177,6 +4174,10 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
       createBarrier(Builder.saveIP(), llvm::omp::OMPD_barrier);
 
+  Builder.restoreIP(FinalizeIP);
+  emitScanBasedDirectiveFinalsIR(reductionInfos);
+  FinalizeIP = Builder.saveIP();
+  
   return afterIP;
 }
 
