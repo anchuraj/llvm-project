@@ -4011,7 +4011,6 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::createScan(
   if (!scanInfo.OMPFirstScanLoop) {
     iv = scanInfo.iv;
     // Emit red = buffer[i]; at the entrance to the scan phase.
-    llvm::BasicBlock *ExclusiveExitBB = nullptr;
     for (int i = 0; i < ScanVars.size(); i++) {
       // x = buffer[i]
       auto buff = scanInfo.ReductionVarToScanBuffs[ScanVars[i]];
@@ -4090,7 +4089,6 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
   if (!updateToLocation(Loc))
     return Loc.IP;
   auto curFn = Builder.GetInsertBlock()->getParent();
-  // #pragma omp master // in parallel region
   // for (int k = 0; k <= ceil(log2(n)); ++k)
   llvm::BasicBlock *LoopBB =
       BasicBlock::Create(curFn->getContext(), "omp.outer.log.scan.body");
@@ -4100,7 +4098,7 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
       Builder.GetInsertBlock()->getModule(),
       (llvm::Intrinsic::ID)llvm::Intrinsic::log2, Builder.getDoubleTy());
   llvm::BasicBlock *InputBB = Builder.GetInsertBlock();
-  ConstantInt *One = ConstantInt::get(Builder.getInt32Ty(), 2);
+  ConstantInt *One = ConstantInt::get(Builder.getInt32Ty(), 1);
   llvm::Value *span = Builder.CreateAdd(spanDiff, One);
   llvm::Value *Arg = Builder.CreateUIToFP(span, Builder.getDoubleTy());
   llvm::Value *LogVal = emitNoUnwindRuntimeCall(F, Arg, "");
@@ -4139,8 +4137,9 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
     auto &reductionVal = reductionInfos[i].PrivateVariable;
     auto buff = scanInfo.ReductionVarToScanBuffs[reductionVal];
     auto destTy = reductionInfos[i].ElementType;
-    auto lhsPtr = Builder.CreateInBoundsGEP(destTy, buff, IVal, "arrayOffset");
-    auto offsetIval = Builder.CreateNUWSub(IVal, Pow2K);
+    Value* IV = Builder.CreateAdd(IVal,Builder.getInt32(1));
+    auto lhsPtr = Builder.CreateInBoundsGEP(destTy, buff, IV, "arrayOffset");
+    auto offsetIval = Builder.CreateNUWSub(IV, Pow2K);
     auto rhsPtr =
         Builder.CreateInBoundsGEP(destTy, buff, offsetIval, "arrayOffset");
     auto lhs = Builder.CreateLoad(destTy, lhsPtr);
@@ -4168,7 +4167,6 @@ OpenMPIRBuilder::InsertPointOrErrorTy OpenMPIRBuilder::emitScanReduction(
   Pow2K->addIncoming(NextPow2K, Builder.GetInsertBlock());
   llvm::Value *Cmp = Builder.CreateICmpNE(Next, LogVal);
   Builder.CreateCondBr(Cmp, LoopBB, ExitBB);
-
   emitBlock(ExitBB, Builder.GetInsertBlock()->getParent());
   Builder.SetInsertPoint(ExitBB);
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
