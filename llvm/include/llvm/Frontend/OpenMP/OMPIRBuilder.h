@@ -548,12 +548,6 @@ public:
   /// Add attributes known for \p FnID to \p Fn.
   LLVM_ABI void addAttributes(omp::RuntimeFunction FnID, Function &Fn);
 
-  /// Type used throughout for insertion points.
-  using InsertPointTy = IRBuilder<>::InsertPoint;
-
-  /// Type used to represent an insertion point or an error value.
-  using InsertPointOrErrorTy = Expected<InsertPointTy>;
-
   /// Get the create a name using the platform specific separators.
   /// \param Parts parts of the final name that needs separation
   /// The created name has a first separator between the first and second part
