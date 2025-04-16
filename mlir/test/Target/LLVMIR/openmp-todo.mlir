@@ -146,12 +146,11 @@ atomic {
   llvm.atomicrmw fadd %arg2, %2 monotonic : !llvm.ptr, f32
   omp.yield
 }
-llvm.func @scan_reduction(%lb : i32, %ub : i32, %step : i32, %x : !llvm.ptr) {
-  // expected-error@below {{not yet implemented: Unhandled clause reduction with modifier in omp.wsloop operation}}
-  // expected-error@below {{LLVM Translation failed for operation: omp.wsloop}}
-  omp.wsloop reduction(mod:inscan, @add_f32 %x -> %prv : !llvm.ptr) {
+llvm.func @simd_reduction(%lb : i32, %ub : i32, %step : i32, %x : !llvm.ptr) {
+  // expected-error@below {{not yet implemented: Unhandled clause reduction in omp.simd operation}}
+  // expected-error@below {{LLVM Translation failed for operation: omp.simd}}
+  omp.simd reduction(@add_f32 %x -> %prv : !llvm.ptr) {
     omp.loop_nest (%iv) : i32 = (%lb) to (%ub) step (%step) {
-      omp.scan inclusive(%prv : !llvm.ptr)
       omp.yield
     }
   }
