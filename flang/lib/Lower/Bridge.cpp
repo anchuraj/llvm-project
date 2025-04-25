@@ -5614,6 +5614,8 @@ private:
                llvm::dbgs() << "\n");
     Fortran::lower::CalleeInterface callee(funit, *this);
     mlir::func::FuncOp func = callee.addEntryBlockAndMapArguments();
+
+    //func.setAttr("instrument-function-entry", "__cyg_profile_func_enter");
     builder =
         new fir::FirOpBuilder(func, bridge.getKindMap(), &mlirSymbolTable);
     assert(builder && "FirOpBuilder did not instantiate");

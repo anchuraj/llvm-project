@@ -264,6 +264,7 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
   if (args.hasFlag(clang::driver::options::OPT_fdebug_pass_manager,
                    clang::driver::options::OPT_fno_debug_pass_manager, false))
     opts.DebugPassManager = 1;
+  
 
   if (args.hasFlag(clang::driver::options::OPT_fstack_arrays,
                    clang::driver::options::OPT_fno_stack_arrays, false))
@@ -310,6 +311,9 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
        args.filtered(clang::driver::options::OPT_fembed_offload_object_EQ))
     opts.OffloadObjects.push_back(a->getValue());
 
+  if (args.hasFlag(clang::driver::options::OPT_finstrument_functions,
+                 clang::driver::options::OPT_finstrument_functions, false))
+    opts.InstrumentFunctions = true;
   // -flto=full/thin option.
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_flto_EQ)) {
@@ -667,13 +671,14 @@ static bool parseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
   if (llvm::opt::Arg *a = args.getLastArg(clang::driver::options::OPT_load)) {
     opts.plugins.push_back(a->getValue());
   }
-
+  
   // Parsing -plugin <name> option and storing plugin name and setting action
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_plugin)) {
     opts.programAction = PluginAction;
     opts.actionName = a->getValue();
   }
+ 
 
   opts.outputFile = args.getLastArgValue(clang::driver::options::OPT_o);
   opts.showHelp = args.hasArg(clang::driver::options::OPT_help);

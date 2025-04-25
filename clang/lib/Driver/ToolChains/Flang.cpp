@@ -128,7 +128,7 @@ void Flang::addOtherOptions(const ArgList &Args, ArgStringList &CmdArgs) const {
                    options::OPT_std_EQ, options::OPT_W_Joined,
                    options::OPT_fconvert_EQ, options::OPT_fpass_plugin_EQ,
                    options::OPT_funderscoring, options::OPT_fno_underscoring,
-                   options::OPT_funsigned, options::OPT_fno_unsigned});
+                   options::OPT_funsigned, options::OPT_fno_unsigned, options::OPT_finstrument_functions});
 
   llvm::codegenoptions::DebugInfoKind DebugInfoKind;
   if (Args.hasArg(options::OPT_gN_Group)) {
@@ -854,8 +854,9 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
   // -fPIC and related options.
   addPicOptions(Args, CmdArgs);
 
-  // Floating point related options
+  // Floating point related op.tions
   addFloatingPointOptions(D, Args, CmdArgs);
+
 
   // Add target args, features, etc.
   addTargetOptions(Args, CmdArgs);
@@ -870,7 +871,9 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
 
   // Add R Group options
   Args.AddAllArgs(CmdArgs, options::OPT_R_Group);
-
+  
+//  Args.AddAllArgs(CmdArgs, options::OPT_f_Group);
+//
   // Remarks can be enabled with any of the `-f.*optimization-record.*` flags.
   if (willEmitRemarks(Args))
     renderRemarksOptions(Args, CmdArgs, Input);
@@ -990,7 +993,7 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (Args.getLastArg(options::OPT_save_temps_EQ))
     Args.AddLastArg(CmdArgs, options::OPT_save_temps_EQ);
-
+  
   addDashXForInput(Args, Input, CmdArgs);
 
   bool FRecordCmdLine = false;
