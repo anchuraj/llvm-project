@@ -68,7 +68,6 @@ void FunctionAttrPass::runOnOperation() {
   }
 
   mlir::MLIRContext *context = &getContext();
-  //TODO: Add the attribute to llvm FuncOp
   if (framePointerKind != mlir::LLVM::framePointerKind::FramePointerKind::None)
     func->setAttr("frame_pointer", mlir::LLVM::FramePointerKindAttr::get(
                                        context, framePointerKind));
@@ -81,7 +80,7 @@ void FunctionAttrPass::runOnOperation() {
       mlir::StringAttr::get(context,instrumentFunctionEntry));
   if(!instrumentFunctionExit.empty())
     func->setAttr(
-      mlir::LLVM::LLVMFuncOp::getInstrumentFunctionEntryAttrName(llvmFuncOpName),
+      mlir::LLVM::LLVMFuncOp::getInstrumentFunctionExitAttrName(llvmFuncOpName),
       mlir::StringAttr::get(context,instrumentFunctionExit));
   if (noInfsFPMath)
     func->setAttr(

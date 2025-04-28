@@ -2226,12 +2226,12 @@ void ModuleImport::processFunctionAttributes(llvm::Function *func,
       attr.isStringAttribute())
     funcOp.setInstrumentFunctionEntry(
         StringAttr::get(context, attr.getValueAsString()));
-  
+
   if (llvm::Attribute attr = func->getFnAttribute("instrument-function-exit");
       attr.isStringAttribute())
     funcOp.setInstrumentFunctionExit(
         StringAttr::get(context, attr.getValueAsString()));
-  
+
   if (llvm::Attribute attr = func->getFnAttribute("no-signed-zeros-fp-math");
       attr.isStringAttribute())
     funcOp.setNoSignedZerosFpMath(attr.getValueAsBool());

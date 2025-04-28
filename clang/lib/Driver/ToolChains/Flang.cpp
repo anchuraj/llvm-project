@@ -854,9 +854,8 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
   // -fPIC and related options.
   addPicOptions(Args, CmdArgs);
 
-  // Floating point related op.tions
+  // Floating point related options
   addFloatingPointOptions(D, Args, CmdArgs);
-
 
   // Add target args, features, etc.
   addTargetOptions(Args, CmdArgs);
@@ -871,9 +870,7 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
 
   // Add R Group options
   Args.AddAllArgs(CmdArgs, options::OPT_R_Group);
-  
-//  Args.AddAllArgs(CmdArgs, options::OPT_f_Group);
-//
+
   // Remarks can be enabled with any of the `-f.*optimization-record.*` flags.
   if (willEmitRemarks(Args))
     renderRemarksOptions(Args, CmdArgs, Input);
@@ -993,7 +990,7 @@ void Flang::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (Args.getLastArg(options::OPT_save_temps_EQ))
     Args.AddLastArg(CmdArgs, options::OPT_save_temps_EQ);
-  
+
   addDashXForInput(Args, Input, CmdArgs);
 
   bool FRecordCmdLine = false;
