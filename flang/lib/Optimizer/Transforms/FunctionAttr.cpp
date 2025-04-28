@@ -28,6 +28,8 @@ namespace {
 class FunctionAttrPass : public fir::impl::FunctionAttrBase<FunctionAttrPass> {
 public:
   FunctionAttrPass(const fir::FunctionAttrOptions &options) {
+    instrumentFunctionEntry = options.instrumentFunctionEntry;
+    instrumentFunctionExit = options.instrumentFunctionExit;
     framePointerKind = options.framePointerKind;
     noInfsFPMath = options.noInfsFPMath;
     noNaNsFPMath = options.noNaNsFPMath;
@@ -66,12 +68,21 @@ void FunctionAttrPass::runOnOperation() {
   }
 
   mlir::MLIRContext *context = &getContext();
+  //TODO: Add the attribute to llvm FuncOp
   if (framePointerKind != mlir::LLVM::framePointerKind::FramePointerKind::None)
     func->setAttr("frame_pointer", mlir::LLVM::FramePointerKindAttr::get(
                                        context, framePointerKind));
 
   auto llvmFuncOpName =
       mlir::OperationName(mlir::LLVM::LLVMFuncOp::getOperationName(), context);
+  if(!instrumentFunctionEntry.empty())
+    func->setAttr(
+      mlir::LLVM::LLVMFuncOp::getInstrumentFunctionEntryAttrName(llvmFuncOpName),
+      mlir::StringAttr::get(context,instrumentFunctionEntry));
+  if(!instrumentFunctionExit.empty())
+    func->setAttr(
+      mlir::LLVM::LLVMFuncOp::getInstrumentFunctionEntryAttrName(llvmFuncOpName),
+      mlir::StringAttr::get(context,instrumentFunctionExit));
   if (noInfsFPMath)
     func->setAttr(
         mlir::LLVM::LLVMFuncOp::getNoInfsFpMathAttrName(llvmFuncOpName),
