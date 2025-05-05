@@ -235,6 +235,12 @@ module {
   llvm.func @align_func() attributes {alignment = 2 : i64} {
     llvm.return
   }
+  
+  llvm.func @amdgpu_fp_unsafe_atomics() attributes {amdgpu_fp_unsafe_atomics = true} {
+    // CHECK: @amdgpu_fp_unsafe_atomics
+    // CHECK-SAME: attributes {amdgpu_fp_unsafe_atomics = true}
+    llvm.return
+  }
 
   // CHECK: llvm.comdat @__llvm_comdat
   llvm.comdat @__llvm_comdat {

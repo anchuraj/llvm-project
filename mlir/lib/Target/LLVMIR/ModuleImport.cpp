@@ -2140,6 +2140,7 @@ static constexpr std::array kExplicitAttributes{
     StringLiteral("aarch64_pstate_sm_body"),
     StringLiteral("aarch64_pstate_sm_compatible"),
     StringLiteral("aarch64_pstate_sm_enabled"),
+    StringLiteral("amdgpu-unsafe-fp-atomics"),
     StringLiteral("alwaysinline"),
     StringLiteral("approx-func-fp-math"),
     StringLiteral("convergent"),
@@ -2256,6 +2257,8 @@ void ModuleImport::processFunctionAttributes(llvm::Function *func,
   else if (func->hasFnAttribute("aarch64_preserves_za"))
     funcOp.setArmPreservesZa(true);
 
+  if (func->hasFnAttribute("amdgpu-unsafe-fp-atomics"))
+    funcOp.setAmdgpuUnsafeFpAtomics(true);
   llvm::Attribute attr = func->getFnAttribute(llvm::Attribute::VScaleRange);
   if (attr.isValid()) {
     MLIRContext *context = funcOp.getContext();
