@@ -708,6 +708,7 @@ void CodeGenAction::generateLLVMIR() {
   CompilerInvocation &invoc = ci.getInvocation();
   const CodeGenOptions &opts = invoc.getCodeGenOpts();
   const auto &mathOpts = invoc.getLoweringOpts().getMathOptions();
+  const TargetOptions &targetOpts = invoc.getTargetOpts();
   llvm::OptimizationLevel level = mapToLevel(opts);
   mlir::DefaultTimingManager &timingMgr = ci.getTimingManager();
   mlir::TimingScope &timingScopeRoot = ci.getTimingScopeRoot();
@@ -726,7 +727,7 @@ void CodeGenAction::generateLLVMIR() {
   pm.addPass(std::make_unique<Fortran::lower::VerifierPass>());
   pm.enableVerifier(/*verifyPasses=*/true);
 
-  MLIRToLLVMPassPipelineConfig config(level, opts, mathOpts);
+  MLIRToLLVMPassPipelineConfig config(level, opts, mathOpts, targetOpts);
   fir::registerDefaultInlinerPass(config);
 
   if (auto vsr = getVScaleRange(ci)) {
@@ -788,7 +789,6 @@ void CodeGenAction::generateLLVMIR() {
           static_cast<llvm::PIELevel::Level>(opts.PICLevel));
   }
 
-  const TargetOptions &targetOpts = ci.getInvocation().getTargetOpts();
   const llvm::Triple triple(targetOpts.triple);
 
   // Set mcmodel level LLVM module flags

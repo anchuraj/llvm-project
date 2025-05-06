@@ -14,6 +14,7 @@
 #define FORTRAN_TOOLS_CROSS_TOOL_HELPERS_H
 
 #include "flang/Frontend/CodeGenOptions.h"
+#include "flang/Frontend/TargetOptions.h"
 #include "flang/Support/LangOptions.h"
 #include "flang/Support/MathOptionsBase.h"
 #include <cstdint>
@@ -85,7 +86,8 @@ struct MLIRToLLVMPassPipelineConfig : public FlangEPCallBacks {
   }
   explicit MLIRToLLVMPassPipelineConfig(llvm::OptimizationLevel level,
       const Fortran::frontend::CodeGenOptions &opts,
-      const Fortran::common::MathOptionsBase &mathOpts) {
+      const Fortran::common::MathOptionsBase &mathOpts,
+      const Fortran::frontend::TargetOptions &targetOpts) {
     OptLevel = level;
     StackArrays = opts.StackArrays;
     Underscoring = opts.Underscoring;
@@ -106,6 +108,7 @@ struct MLIRToLLVMPassPipelineConfig : public FlangEPCallBacks {
       InstrumentFunctionEntry = "__cyg_profile_func_enter";
       InstrumentFunctionExit = "__cyg_profile_func_exit";
     }
+    AmdgpuUnsafeFpAtomics = targetOpts.amdgpuUnsafeFpAtomics;
   }
 
   llvm::OptimizationLevel OptLevel; ///< optimisation level
@@ -134,6 +137,8 @@ struct MLIRToLLVMPassPipelineConfig : public FlangEPCallBacks {
   std::string InstrumentFunctionExit =
       ""; ///< Name of the instrument-function that is called on each
           ///< function-exit
+  bool AmdgpuUnsafeFpAtomics =
+      false; ///< Set amdgpu-unsafe-fp-atomics attribute for functions.
 };
 
 struct OffloadModuleOpts {

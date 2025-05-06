@@ -415,6 +415,10 @@ def FunctionAttr : Pass<"function-attr", "mlir::func::FuncOp"> {
               "module.">,
        Option<"unsafeFPMath", "unsafe-fp-math", "bool", /*default=*/"false",
               "Set the unsafe-fp-math attribute on functions in the module.">,
+       Option<"amdgpuUnsafeFpAtomics", "amdgpu-unsafe-fp-atomics", "bool",
+              /*default=*/"false",
+              "Set the amdgpu-unsafe-fp-atomics attribute on functions in the "
+              "module.">,
        Option<"tuneCPU", "tune-cpu", "std::string", /*default=*/"",
               "Set the tune-cpu attribute on functions in the module.">,
   ];
