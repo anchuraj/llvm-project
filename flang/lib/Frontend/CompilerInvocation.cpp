@@ -473,8 +473,12 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
 /// \param [in] args The list of input arguments (from the compiler invocation)
 static void parseTargetArgs(TargetOptions &opts, llvm::opt::ArgList &args) {
   if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_triple))
+          args.getLastArg(clang::driver::options::OPT_triple)) {
     opts.triple = a->getValue();
+    if (llvm::Triple(opts.triple).isAMDGPU() &&
+        args.hasArg(clang::driver::options::OPT_munsafe_fp_atomics))
+      opts.amdgpuUnsafeFpAtomics = true;
+  }
 
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_target_cpu))

@@ -53,6 +53,9 @@ public:
 
   /// Print verbose assembly
   bool asmVerbose = false;
+
+  /// Indicates whether unsafe Floating point atomic operations can be used.
+  bool amdgpuUnsafeFpAtomics = false;
 };
 
 } // end namespace Fortran::frontend

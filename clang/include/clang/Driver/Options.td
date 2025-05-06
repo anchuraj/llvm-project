@@ -5216,8 +5216,10 @@ defm amdgpu_precise_memory_op
     : SimpleMFlag<"amdgpu-precise-memory-op", "Enable", "Disable",
                   " precise memory mode (AMDGPU only)">;
 
-def munsafe_fp_atomics : Flag<["-"], "munsafe-fp-atomics">,
-  Visibility<[ClangOption, CC1Option]>, Alias<fatomic_ignore_denormal_mode>;
+def munsafe_fp_atomics
+    : Flag<["-"], "munsafe-fp-atomics">,
+      Visibility<[ClangOption, CC1Option, FlangOption, FC1Option]>,
+      Alias<fatomic_ignore_denormal_mode>;
 def mno_unsafe_fp_atomics : Flag<["-"], "mno-unsafe-fp-atomics">,
   Visibility<[ClangOption]>, Alias<fno_atomic_ignore_denormal_mode>;
 

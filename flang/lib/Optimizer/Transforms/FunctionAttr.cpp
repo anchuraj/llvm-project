@@ -36,6 +36,7 @@ public:
     approxFuncFPMath = options.approxFuncFPMath;
     noSignedZerosFPMath = options.noSignedZerosFPMath;
     unsafeFPMath = options.unsafeFPMath;
+    amdgpuUnsafeFpAtomics = options.amdgpuUnsafeFpAtomics;
   }
   FunctionAttrPass() {}
   void runOnOperation() override;
@@ -102,6 +103,10 @@ void FunctionAttrPass::runOnOperation() {
     func->setAttr(
         mlir::LLVM::LLVMFuncOp::getUnsafeFpMathAttrName(llvmFuncOpName),
         mlir::BoolAttr::get(context, true));
+  if (amdgpuUnsafeFpAtomics)
+    func->setAttr(mlir::LLVM::LLVMFuncOp::getAmdgpuUnsafeFpAtomicsAttrName(
+                      llvmFuncOpName),
+                  mlir::BoolAttr::get(context, true));
 
   LLVM_DEBUG(llvm::dbgs() << "=== End " DEBUG_TYPE " ===\n");
 }
