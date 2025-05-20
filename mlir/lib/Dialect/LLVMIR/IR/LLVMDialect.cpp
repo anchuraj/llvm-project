@@ -3278,7 +3278,7 @@ void AtomicRMWOp::build(OpBuilder &builder, OperationState &state,
   build(builder, state, val.getType(), binOp, ptr, val, ordering,
         !syncscope.empty() ? builder.getStringAttr(syncscope) : nullptr,
         alignment ? builder.getI64IntegerAttr(alignment) : nullptr, isVolatile,
-        /*access_groups=*/nullptr,
+        /*atomic_control=*/nullptr, /*access_groups=*/nullptr,
         /*alias_scopes=*/nullptr, /*noalias_scopes=*/nullptr, /*tbaa=*/nullptr);
 }
 

@@ -330,6 +330,37 @@ def AliasAnalysisOpInterface : OpInterface<"AliasAnalysisOpInterface"> {
   ];
 }
 
+def AtomicControlInterface : OpInterface<"AtomicControlInterface"> {
+  let description = [{
+  }];
+
+  let cppNamespace = "::mlir::LLVM";
+
+  let methods = [
+    InterfaceMethod<
+      /*desc=*/        "Returns the dereferenceable attribute or nullptr",
+      /*returnType=*/  "::mlir::LLVM::AtomicControlAttr",
+      /*methodName=*/  "getAtomicControlAttributes",
+      /*args=*/        (ins),
+      /*methodBody=*/  [{}],
+      /*defaultImpl=*/ [{
+        auto op = cast<ConcreteOp>(this->getOperation());
+        return op.getAtomicControlAttr();
+      }]
+      >,
+    InterfaceMethod<
+      /*desc=*/        "Sets the dereferenceable attribute",
+      /*returnType=*/  "void",
+      /*methodName=*/  "setAtomicControlAttributes",
+      /*args=*/        (ins "::mlir::LLVM::AtomicControlAttr":$attr),
+      /*methodBody=*/  [{}],
+      /*defaultImpl=*/ [{
+        auto op = cast<ConcreteOp>(this->getOperation());
+        op.setAtomicControlAttr(attr);
+      }]
+      >
+  ];
+}
 def DereferenceableOpInterface : OpInterface<"DereferenceableOpInterface"> {
   let description = [{
     An interface for memory operations that can carry dereferenceable metadata.

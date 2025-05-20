@@ -32,6 +32,9 @@ using namespace mlir::LLVM::detail;
 
 #include "mlir/Dialect/LLVMIR/LLVMConversionEnumsFromLLVM.inc"
 
+static constexpr StringLiteral amdgpuNoFineGrainedMemoryMDName = "amdgpu.no.fine.grained.memory";
+static constexpr StringLiteral amdgpuIgnoreDenormalModeMDName = "amdgpu.ignore.denormal.mode";
+static constexpr StringLiteral amdgpuNoRemoteMemoryMDName = "amdgpu.no.remote.memory";
 static constexpr StringLiteral vecTypeHintMDName = "vec_type_hint";
 static constexpr StringLiteral workGroupSizeHintMDName = "work_group_size_hint";
 static constexpr StringLiteral reqdWorkGroupSizeMDName = "reqd_work_group_size";
@@ -92,6 +95,9 @@ static ArrayRef<unsigned> getSupportedMetadataImpl(llvm::LLVMContext &context) {
       llvm::LLVMContext::MD_alias_scope,
       llvm::LLVMContext::MD_dereferenceable,
       llvm::LLVMContext::MD_dereferenceable_or_null,
+      context.getMDKindID(amdgpuNoFineGrainedMemoryMDName),
+      context.getMDKindID(amdgpuIgnoreDenormalModeMDName),
+      context.getMDKindID(amdgpuNoRemoteMemoryMDName),
       context.getMDKindID(vecTypeHintMDName),
       context.getMDKindID(workGroupSizeHintMDName),
       context.getMDKindID(reqdWorkGroupSizeMDName),
@@ -206,6 +212,22 @@ static LogicalResult setDereferenceableAttr(const llvm::MDNode *node,
     return failure();
 
   iface.setDereferenceable(*dereferenceable);
+  return success();
+}
+
+static LogicalResult setAtomicControlAttr(const llvm::MDNode *node,
+                                            llvm::SmallVector<unsigned> kindIDs, Operation *op,
+                                            LLVM::ModuleImport &moduleImport) {
+  auto atomicControl =
+      moduleImport.translateAtomicControlAttr(node, kindIDs[0]);
+  if (failed(atomicControl))
+    return failure();
+
+  auto iface = dyn_cast<AtomicControlInterface>(op);
+  if (!iface)
+    return failure();
+
+  iface.setAtomicControlAttributes(*atomicControl);
   return success();
 }
 
@@ -410,6 +432,7 @@ public:
                                  llvm::MDNode *node, Operation *op,
                                  LLVM::ModuleImport &moduleImport) const final {
     // Call metadata specific handlers.
+    //TODO: Set Atomic Attributes
     if (kind == llvm::LLVMContext::MD_prof)
       return setProfilingAttr(builder, node, op, moduleImport);
     if (kind == llvm::LLVMContext::MD_tbaa)
@@ -431,6 +454,10 @@ public:
           moduleImport);
 
     llvm::LLVMContext &context = node->getContext();
+    llvm::SmallVector<unsigned> atomicControlKinds;
+    if (kind == context.getMDKindID(amdgpuIgnoreDenormalModeMDName))
+      return setAtomicControlAttr(node, atomicControlKinds, op, moduleImport);
+    
     if (kind == context.getMDKindID(vecTypeHintMDName))
       return setVecTypeHintAttr(builder, node, op, moduleImport);
     if (kind == context.getMDKindID(workGroupSizeHintMDName))

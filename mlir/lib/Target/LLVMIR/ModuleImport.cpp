@@ -3046,6 +3046,16 @@ ModuleImport::lookupAccessGroupAttrs(const llvm::MDNode *node) const {
   return loopAnnotationImporter->lookupAccessGroupAttrs(node);
 }
 
+FailureOr<AtomicControlAttr>
+ModuleImport::translateAtomicControlAttr(const llvm::MDNode *node,
+                                           unsigned kindID) {
+  Location loc = mlirModule.getLoc();
+
+  auto atomicControlAttr = builder.getAttr<AtomicControlAttr>(true, true, true);
+
+  return atomicControlAttr;
+}
+
 LoopAnnotationAttr
 ModuleImport::translateLoopAnnotationAttr(const llvm::MDNode *node,
                                           Location loc) const {

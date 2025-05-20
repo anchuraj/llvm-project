@@ -1322,6 +1322,20 @@ def LLVM_DereferenceableAttr : LLVM_Attr<"Dereferenceable", "dereferenceable"> {
 }
 
 //===----------------------------------------------------------------------===//
+// AtomicControlAttributes
+//===----------------------------------------------------------------------===//
+
+def LLVM_AtomicControlAttr : LLVM_Attr<"AtomicControl", "atomic_control"> {
+  let summary = "LLVM Control Attributes";
+  let description = [{
+    Attributes for atomic control metadata.
+  }];
+  let parameters = (ins DefaultValuedParameter<"bool", "false">: $remoteMemory,
+  DefaultValuedParameter<"bool", "false">: $fineGrainedMemory,
+  DefaultValuedParameter<"bool", "false">: $ignoreDenormalMode);
+  let assemblyFormat = "`<` struct(params) `>`";
+}
+//===----------------------------------------------------------------------===//
 // ModuleFlagAttr & related
 //===----------------------------------------------------------------------===//
 

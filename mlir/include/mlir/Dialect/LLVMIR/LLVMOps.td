@@ -2158,13 +2158,15 @@ def LLVM_AtomicRMWType
 
 def LLVM_AtomicRMWOp : LLVM_MemAccessOpBase<"atomicrmw", [
       TypesMatchWith<"result #0 and operand #1 have the same type",
-                     "val", "res", "$_self">]> {
+                     "val", "res", "$_self">,
+      DeclareOpInterfaceMethods<AtomicControlInterface>]> {
   dag args = (ins AtomicBinOp:$bin_op,
               LLVM_AnyPointer:$ptr,
               LLVM_AtomicRMWType:$val, AtomicOrdering:$ordering,
               OptionalAttr<StrAttr>:$syncscope,
               OptionalAttr<I64Attr>:$alignment,
-              UnitAttr:$volatile_);
+              UnitAttr:$volatile_,
+              OptionalAttr<LLVM_AtomicControlAttr>:$atomic_control);
   // Append the aliasing related attributes defined in LLVM_MemAccessOpBase.
   let arguments = !con(args, aliasAttrs);
   let results = (outs LLVM_AtomicRMWType:$res);
@@ -2172,6 +2174,7 @@ def LLVM_AtomicRMWOp : LLVM_MemAccessOpBase<"atomicrmw", [
     (`volatile` $volatile_^)? $bin_op $ptr `,` $val
     (`syncscope` `(` $syncscope^ `)`)? $ordering attr-dict `:`
     qualified(type($ptr)) `,` type($val)
+    (`atomic_control` `(` $atomic_control^ `)`)?
   }];
   string llvmInstName = "AtomicRMW";
   string llvmBuilder = [{
@@ -2179,6 +2182,7 @@ def LLVM_AtomicRMWOp : LLVM_MemAccessOpBase<"atomicrmw", [
         convertAtomicBinOpToLLVM($bin_op), $ptr, $val, llvm::MaybeAlign(),
         convertAtomicOrderingToLLVM($ordering));
     $res = inst;
+    moduleTranslation.setAtomicControlMetadata(op, inst);
   }] # setVolatileCode
      # setSyncScopeCode
      # setAlignmentCode
@@ -2192,7 +2196,7 @@ def LLVM_AtomicRMWOp : LLVM_MemAccessOpBase<"atomicrmw", [
         convertAtomicOrderingFromLLVM(atomicInst->getOrdering()),
         getLLVMSyncScope(atomicInst), alignment, atomicInst->isVolatile());
   }];
-  list<int> llvmArgIndices = [-1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1];
+  list<int> llvmArgIndices = [-1, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
   let builders = [
     OpBuilder<(ins "LLVM::AtomicBinOp":$binOp, "Value":$ptr, "Value":$val,
       "LLVM::AtomicOrdering":$ordering,

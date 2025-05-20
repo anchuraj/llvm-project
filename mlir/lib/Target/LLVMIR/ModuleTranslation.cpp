@@ -1963,6 +1963,26 @@ void ModuleTranslation::setTBAAMetadata(AliasAnalysisOpInterface op,
   inst->setMetadata(llvm::LLVMContext::MD_tbaa, node);
 }
 
+void ModuleTranslation::setAtomicControlMetadata(
+    AtomicControlInterface op, llvm::Instruction *inst) {
+  AtomicControlAttr atomicControlAttr = op.getAtomicControlAttributes();
+  if (!atomicControlAttr)
+    return;
+
+  if (atomicControlAttr.getIgnoreDenormalMode()) {
+    llvm::MDNode *metadata = llvm::MDNode::get(inst->getContext(), std::nullopt);
+    inst->setMetadata((op->getName()).getStringRef(), metadata);
+  }
+  if (atomicControlAttr.getFineGrainedMemory()) {
+    llvm::MDNode *metadata = llvm::MDNode::get(inst->getContext(), std::nullopt);
+    inst->setMetadata((op->getName()).getStringRef(), metadata);
+  }
+  if (atomicControlAttr.getRemoteMemory()) {
+    llvm::MDNode *metadata = llvm::MDNode::get(inst->getContext(), std::nullopt);
+    inst->setMetadata((op->getName()).getStringRef(), metadata);
+  }
+}
+
 void ModuleTranslation::setDereferenceableMetadata(
     DereferenceableOpInterface op, llvm::Instruction *inst) {
   DereferenceableAttr derefAttr = op.getDereferenceableOrNull();

@@ -251,6 +251,13 @@ public:
   FailureOr<SmallVector<AccessGroupAttr>>
   lookupAccessGroupAttrs(const llvm::MDNode *node) const;
 
+  /// Returns the dereferenceable attribute that corresponds to the given LLVM
+  /// dereferenceable or dereferenceable_or_null metadata `node`. `kindID`
+  /// specifies the kind of the metadata node (dereferenceable or
+  /// dereferenceable_or_null).
+  FailureOr<AtomicControlAttr>
+  translateAtomicControlAttr(const llvm::MDNode *node, unsigned kindID);
+  
   /// Returns the loop annotation attribute that corresponds to the given LLVM
   /// loop metadata `node`.
   LoopAnnotationAttr translateLoopAnnotationAttr(const llvm::MDNode *node,
