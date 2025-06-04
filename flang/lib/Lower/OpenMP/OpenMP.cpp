@@ -2911,8 +2911,10 @@ static void genAtomicUpdateStatement(
   if (rightHandClauseList)
     genOmpAtomicHintAndMemoryOrderClauses(converter, *rightHandClauseList, hint,
                                           memoryOrder);
+  auto module = firOpBuilder.getModule(); 
+  auto atomicControlAttr = mlir::omp::AtomicControlAttr::get(firOpBuilder.getContext(), fir::getAmdgpuIgnoreDenormalMode(module), fir::getAmdgpuFineGrainedMemory(module), fir::getAmdgpuRemoteMemory(module));
   atomicUpdateOp = firOpBuilder.create<mlir::omp::AtomicUpdateOp>(
-      currentLocation, lhsAddr, hint, memoryOrder);
+      currentLocation, lhsAddr, atomicControlAttr, hint, memoryOrder);
 
   processOmpAtomicTODO(varType, loc);
 

@@ -2171,6 +2171,7 @@ SmallVector<llvm::Value *> ModuleTranslation::lookupValues(ValueRange values) {
 
 llvm::OpenMPIRBuilder *ModuleTranslation::getOpenMPBuilder() {
   if (!ompBuilder) {
+    // makes a new builder and it does not have properties set already or the callbacks set already
     ompBuilder = std::make_unique<llvm::OpenMPIRBuilder>(*llvmModule);
     ompBuilder->initialize();
 

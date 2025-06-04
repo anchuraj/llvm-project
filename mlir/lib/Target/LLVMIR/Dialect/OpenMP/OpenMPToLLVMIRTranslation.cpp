@@ -3165,13 +3165,17 @@ convertOmpAtomicUpdate(omp::AtomicUpdateOp &opInst,
     return moduleTranslation.lookupValue(yieldop.getResults()[0]);
   };
 
+  bool isAmdgpuIgnoreDenormalMode = opInst.getAtomicControlAttr()->getAmdgpuIgnoreDenormalMode();
+  bool isAmdgpuNoFineGrainedMemory = !opInst.getAtomicControlAttr()->getAmdgpuFineGrainedMemory();
+  bool isAmdgpuNoRemoteMemory = !opInst.getAtomicControlAttr()->getAmdgpuRemoteMemory(); 
   // Handle ambiguous alloca, if any.
   auto allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
       ompBuilder->createAtomicUpdate(ompLoc, allocaIP, llvmAtomicX, llvmExpr,
                                      atomicOrdering, binop, updateFn,
-                                     isXBinopExpr);
+                                     isXBinopExpr, isAmdgpuIgnoreDenormalMode, isAmdgpuNoFineGrainedMemory, isAmdgpuNoRemoteMemory);
+                                    
 
   if (failed(handleError(afterIP, *opInst)))
     return failure();
@@ -3193,6 +3197,7 @@ convertOmpAtomicCapture(omp::AtomicCaptureOp atomicCaptureOp,
   llvm::AtomicRMWInst::BinOp binop = llvm::AtomicRMWInst::BinOp::BAD_BINOP;
 
   omp::AtomicUpdateOp atomicUpdateOp = atomicCaptureOp.getAtomicUpdateOp();
+
   omp::AtomicWriteOp atomicWriteOp = atomicCaptureOp.getAtomicWriteOp();
 
   assert((atomicUpdateOp || atomicWriteOp) &&
@@ -3260,13 +3265,17 @@ convertOmpAtomicCapture(omp::AtomicCaptureOp atomicCaptureOp,
     return moduleTranslation.lookupValue(yieldop.getResults()[0]);
   };
 
+  bool isAmdgpuIgnoreDenormalMode = atomicUpdateOp.getAtomicControlAttr()->getAmdgpuIgnoreDenormalMode();
+  bool isAmdgpuNoFineGrainedMemory = !atomicUpdateOp.getAtomicControlAttr()->getAmdgpuFineGrainedMemory();
+  bool isAmdgpuNoRemoteMemory = !atomicUpdateOp.getAtomicControlAttr()->getAmdgpuRemoteMemory(); 
   // Handle ambiguous alloca, if any.
   auto allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
       ompBuilder->createAtomicCapture(
           ompLoc, allocaIP, llvmAtomicX, llvmAtomicV, llvmExpr, atomicOrdering,
-          binop, updateFn, atomicUpdateOp, isPostfixUpdate, isXBinopExpr);
+          binop, updateFn, atomicUpdateOp, isPostfixUpdate,
+          isXBinopExpr, isAmdgpuIgnoreDenormalMode, isAmdgpuNoFineGrainedMemory, isAmdgpuNoRemoteMemory);
 
   if (failed(handleError(afterIP, *atomicCaptureOp)))
     return failure();

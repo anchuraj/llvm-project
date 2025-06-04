@@ -257,9 +257,9 @@ public:
   /// PHI nodes are constructed for block arguments but are _not_ connected to
   /// the predecessors that may not exist yet.
   LogicalResult convertBlock(Block &bb, bool ignoreArguments,
-                             llvm::IRBuilderBase &builder) {
+                             llvm::IRBuilderBase &builder, bool recordInsertions=false) {
     return convertBlockImpl(bb, ignoreArguments, builder,
-                            /*recordInsertions=*/false);
+                            recordInsertions);
   }
 
   /// Translates parameter attributes of a call and adds them to the returned

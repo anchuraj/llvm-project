@@ -1545,7 +1545,7 @@ def AtomicUpdateOp : OpenMP_Op<"atomic.update", traits = [
 
   let arguments = !con((ins Arg<OpenMP_PointerLikeType,
                                 "Address of variable to be updated",
-                                [MemRead, MemWrite]>:$x), clausesArgs);
+                                [MemRead, MemWrite]>:$x, OptionalAttr<AtomicControlAttr>:$atomic_control_attr), clausesArgs);
 
   // Override region definition.
   let regions = (region SizedRegion<1>:$region);
