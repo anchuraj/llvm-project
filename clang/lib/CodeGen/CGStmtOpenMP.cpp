@@ -2075,6 +2075,33 @@ CodeGenFunction::EmitOMPCollapsedCanonicalLoopNest(const Stmt *S, int Depth) {
   return Result;
 }
 
+llvm::Expected<SmallVector<llvm::CanonicalLoopInfo *>>
+CodeGenFunction::EmitOMPScanCollapsedCanonicalLoopNest(const Stmt *S, int Depth) {
+  assert(Depth == 1 && "Nested loops with OpenMPIRBuilder not yet implemented");
+
+  // The caller is processing the loop-associated directive processing the \p
+  // Depth loops nested in \p S. Put the previous pending loop-associated
+  // directive to the stack. If the current loop-associated directive is a loop
+  // transformation directive, it will push its generated loops onto the stack
+  // such that together with the loops left here they form the combined loop
+  // nest for the parent loop-associated directive.
+  int ParentExpectedOMPLoopDepth = ExpectedOMPLoopDepth;
+  ExpectedOMPLoopDepth = Depth;
+
+  EmitStmt(S);
+  assert(OMPLoopNestStack.size() >= (size_t)Depth && "Found too few loops");
+
+  // The last added loop is the outermost one.
+  llvm::CanonicalLoopInfo *Result = OMPLoopNestStack.back();
+
+  // Pop the \p Depth loops requested by the call from that stack and restore
+  // the previous context.
+  OMPLoopNestStack.pop_back_n(Depth);
+  ExpectedOMPLoopDepth = ParentExpectedOMPLoopDepth;
+
+  return Result;
+}
+
 void CodeGenFunction::EmitOMPCanonicalLoop(const OMPCanonicalLoop *S) {
   const Stmt *SyntacticalLoop = S->getLoopStmt();
   if (!getLangOpts().OpenMPIRBuilder) {
@@ -2082,6 +2109,7 @@ void CodeGenFunction::EmitOMPCanonicalLoop(const OMPCanonicalLoop *S) {
     EmitStmt(SyntacticalLoop);
     return;
   }
+  //if in scan scope, emit canonical scan loops
 
   LexicalScope ForScope(*this, S->getSourceRange());
 
@@ -4079,6 +4107,35 @@ convertClauseKindToSchedKind(OpenMPScheduleClauseKind ScheduleClauseKind) {
   llvm_unreachable("Unhandled schedule kind");
 }
 
+static void emitScanBasedOMPForDirective(const OMPLoopDirective &S, CodeGenFunction &CGF,
+                                CodeGenModule &CGM, bool HasCancel) {
+  // collect the reduction Vars
+  // make reduction gen
+  // call the for loop
+  // emit Scan reduction in between.
+  SmallVector<const Expr *, 4> Shareds;
+  SmallVector<const Expr *, 4> Privates;
+  SmallVector<const Expr *, 4> ReductionOps;
+  SmallVector<const Expr *, 4> CopyArrayTemps;
+  for (const auto *C : S.getClausesOfKind<OMPReductionClause>()) {
+    assert(C->getModifier() == OMPC_REDUCTION_inscan &&
+           "Only inscan reductions are expected.");
+    Shareds.append(C->varlist_begin(), C->varlist_end());
+    Privates.append(C->privates().begin(), C->privates().end());
+    ReductionOps.append(C->reduction_ops().begin(), C->reduction_ops().end());
+    CopyArrayTemps.append(C->copy_array_temps().begin(),
+                          C->copy_array_temps().end());
+  }
+  ReductionCodeGen RedCG(Shareds, Shareds, Privates, ReductionOps);
+
+  const Stmt *Inner = S.getRawStmt();
+  llvm::Expected<SmallVector<llvm::CanonicalLoopInfo *>> loopResults =
+            CGF.EmitOMPScanCollapsedCanonicalLoopNest(Inner, 1);
+  // emit Scan reduction in between   
+
+  return;                                
+}
+
 // Pass OMPLoopDirective (instead of OMPForDirective) to make this function
 // available for "loop bind(parallel)", which maps to "for".
 static void emitOMPForDirective(const OMPLoopDirective &S, CodeGenFunction &CGF,
@@ -4103,6 +4160,21 @@ static void emitOMPForDirective(const OMPLoopDirective &S, CodeGenFunction &CGF,
 
       // Emit the associated statement and get its loop representation.
       const Stmt *Inner = S.getRawStmt();
+      //TODO: we need reduction info, inscan bool , get the two loops here, emit scan 
+      //reduction in between OMPLoopDirective.
+      //if(InScan)
+       // Take another route and another function.
+       // Collect Scan Variables
+       // Call CreateCanonicalScanLoops
+       // Call ScanReduction.
+       //TODO: Scan Directive.
+      if (llvm::any_of(S.getClausesOfKind<OMPReductionClause>(),
+                       [](const OMPReductionClause *C) {
+                         return C->getModifier() == OMPC_REDUCTION_inscan;
+                       })) {
+        emitScanBasedOMPForDirective(S, CGF, CGM, HasCancel);
+        return;
+      }
       llvm::CanonicalLoopInfo *CLI =
           CGF.EmitOMPCollapsedCanonicalLoopNest(Inner, 1);
 

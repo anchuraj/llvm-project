@@ -3995,6 +3995,7 @@ public:
       CodeGenModule &CGM, StringRef ParentName,
       const OMPTargetTeamsDistributeParallelForDirective &S);
 
+llvm::Expected<SmallVector<llvm::CanonicalLoopInfo *>> EmitOMPScanCollapsedCanonicalLoopNest(const Stmt *S, int Depth);
   /// Emit the Stmt \p S and return its topmost canonical loop, if any.
   /// TODO: The \p Depth paramter is not yet implemented and must be 1. In the
   /// future it is meant to be the number of loops expected in the loop nests
