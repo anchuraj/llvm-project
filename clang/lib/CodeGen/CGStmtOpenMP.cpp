@@ -2089,14 +2089,18 @@ CodeGenFunction::EmitOMPScanCollapsedCanonicalLoopNest(const Stmt *S, int Depth)
   ExpectedOMPLoopDepth = Depth;
 
   EmitStmt(S);
-  assert(OMPLoopNestStack.size() >= (size_t)Depth && "Found too few loops");
 
   // The last added loop is the outermost one.
-  llvm::CanonicalLoopInfo *Result = OMPLoopNestStack.back();
+  SmallVector<llvm::CanonicalLoopInfo *> Result;
+  llvm::CanonicalLoopInfo *scanLoop = OMPLoopNestStack.back();
+  Result.push_back(scanLoop);
+  OMPLoopNestStack.pop_back();
+  llvm::CanonicalLoopInfo *inputLoop = OMPLoopNestStack.back();
+  Result.push_back(inputLoop);
+  OMPLoopNestStack.pop_back();
 
   // Pop the \p Depth loops requested by the call from that stack and restore
   // the previous context.
-  OMPLoopNestStack.pop_back_n(Depth);
   ExpectedOMPLoopDepth = ParentExpectedOMPLoopDepth;
 
   return Result;
