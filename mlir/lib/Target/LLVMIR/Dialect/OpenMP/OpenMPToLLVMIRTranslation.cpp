@@ -2612,6 +2612,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos =
       findCurrentLoopInfos(moduleTranslation);
 
+  llvm::CanonicalLoopInfo* loopInfo = loopInfos.front();
   // Emit Initialization and Update IR for linear variables
   if (wsloopOp.getLinearVars().size()) {
     llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterBarrierIP =
@@ -2679,7 +2680,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   }
 
   // Set the correct branch target for task cancellation
-  popCancelFinalizationCB(cancelTerminators, *ompBuilder, wsloopIP.get());
+  popCancelFinalizationCB(cancelTerminators, *ompBuilder, inputLoopFinishIp);
   if (isInScanRegion) {
     SmallVector<Region *> reductionRegions;
     llvm::transform(reductionDecls, std::back_inserter(reductionRegions),
