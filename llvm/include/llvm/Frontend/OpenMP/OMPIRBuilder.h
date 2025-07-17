@@ -31,6 +31,7 @@
 
 namespace llvm {
 class CanonicalLoopInfo;
+struct ScanInformation;
 struct TargetRegionEntryInfo;
 class OffloadEntriesInfoManager;
 class OpenMPIRBuilder;
@@ -512,29 +513,6 @@ public:
     }
   };
 
-  struct ScanInformation {
-    /// Dominates the body of the loop before scan directive
-    llvm::BasicBlock *OMPBeforeScanBlock = nullptr;
-    /// Dominates the body of the loop before scan directive
-    llvm::BasicBlock *OMPAfterScanBlock = nullptr;
-    /// Controls the flow to before or after scan blocks
-    llvm::BasicBlock *OMPScanDispatch = nullptr;
-    /// Exit block of loop body
-    llvm::BasicBlock *OMPScanLoopExit = nullptr;
-    /// Block before loop body where scan initializations are done
-    llvm::BasicBlock *OMPScanInit = nullptr;
-    /// Block after loop body where scan finalizations are done
-    llvm::BasicBlock *OMPScanFinish = nullptr;
-    /// If true, it indicates Input phase is lowered; else it indicates
-    /// ScanPhase is lowered
-    bool OMPFirstScanLoop = false;
-    // Maps the private reduction variable to the pointer of the temporary
-    // buffer
-    llvm::SmallDenseMap<llvm::Value *, llvm::Value *> ScanBuffPtrs;
-    llvm::Value *IV;
-    llvm::Value *Span;
-  } ScanInfo;
-
   /// Initialize the internal state, this will put structures types and
   /// potentially other helpers into the underlying module. Must be called
   /// before any other method and only once! This internal state includes types
@@ -798,7 +776,7 @@ public:
   /// \param Name      Base name used to derive BB and instruction names.
   ///
   /// \returns A vector containing Loop Info of Input Loop and Scan Loop.
-  Expected<SmallVector<llvm::CanonicalLoopInfo *>> createCanonicalScanLoops(
+  Expected<ScanInformation *> createCanonicalScanLoops(
       const LocationDescription &Loc, LoopBodyGenCallbackTy BodyGenCB,
       Value *Start, Value *Stop, Value *Step, bool IsSigned, bool InclusiveStop,
       InsertPointTy ComputeIP, const Twine &Name);
@@ -880,7 +858,7 @@ public:
                       LoopBodyGenCallbackTy BodyGenCB, Value *Start,
                       Value *Stop, Value *Step, bool IsSigned,
                       bool InclusiveStop, InsertPointTy ComputeIP = {},
-                      const Twine &Name = "loop", bool InScan = false);
+                      const Twine &Name = "loop", ScanInformation *ScanInfo = nullptr, bool InScan = false);
 
   /// Collapse a loop nest into a single loop.
   ///
@@ -1620,10 +1598,11 @@ private:
   /// \return error if any produced, else return success.
   Error emitScanBasedDirectiveIR(
       llvm::function_ref<Error()> InputLoopGen,
-      llvm::function_ref<Error(LocationDescription Loc)> ScanLoopGen);
+      llvm::function_ref<Error(LocationDescription Loc)> ScanLoopGen,
+      ScanInformation *ScanInfo);
 
   /// Creates the basic blocks required for scan reduction.
-  void createScanBBs();
+  void createScanBBs(ScanInformation *ScanInfo);
 
   /// Dynamically allocates the buffer needed for scan reduction.
   /// \param AllocaIP The IP where possibly-shared pointer of buffer needs to be
@@ -1632,14 +1611,16 @@ private:
   /// \return error if any produced, else return success.
   Error emitScanBasedDirectiveDeclsIR(InsertPointTy AllocaIP,
                                       ArrayRef<llvm::Value *> ScanVars,
-                                      ArrayRef<llvm::Type *> ScanVarsType);
+                                      ArrayRef<llvm::Type *> ScanVarsType,
+                                      ScanInformation *ScanInfo);
 
   /// Copies the result back to the reduction variable.
   /// \param ReductionInfos Array type containing the ReductionOps.
   ///
   /// \return error if any produced, else return success.
   Error emitScanBasedDirectiveFinalsIR(
-      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> ReductionInfos);
+      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> ReductionInfos,
+      ScanInformation *ScanInfo);
 
   /// This function emits a helper that gathers Reduce lists from the first
   /// lane of every active warp to lanes in the first warp.
@@ -2741,7 +2722,8 @@ public:
   /// \returns The insertion position *after* the masked.
   InsertPointOrErrorTy emitScanReduction(
       const LocationDescription &Loc,
-      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> ReductionInfos);
+      SmallVector<llvm::OpenMPIRBuilder::ReductionInfo> ReductionInfos,
+      ScanInformation *ScanInfo);
 
   /// This directive split and directs the control flow to input phase
   ///  blocks or scan phase blocks based on 1. whether input loop or scan loop
@@ -2758,7 +2740,8 @@ public:
                                   InsertPointTy AllocaIP,
                                   ArrayRef<llvm::Value *> ScanVars,
                                   ArrayRef<llvm::Type *> ScanVarsType,
-                                  bool IsInclusive);
+                                  bool IsInclusive,
+                                  ScanInformation *ScanInfo);
   /// Generator for '#omp critical'
   ///
   /// \param Loc The insert and source location description.
@@ -3893,6 +3876,37 @@ public:
   /// requirements of an OpenMP canonical loop anymore.
   LLVM_ABI void invalidate();
 };
+struct ScanInformation {
+  CanonicalLoopInfo *InputLoop;
+  CanonicalLoopInfo *ScanLoop;
+  /// Maps the private reduction variable to the pointer of the temporary
+  /// buffer
+  llvm::SmallDenseMap<llvm::Value *, llvm::Value *> ScanBuffPtrs;
+  /// Holds the total span of the canonical loop that is being lowered.
+  /// It is used for scan buffer allocation and finalization
+  llvm::Value *Span;
+
+  ///Variables that help the lowering of body of input and scan loop.
+  /// Dominates the body of the loop before scan directive
+  llvm::BasicBlock *OMPBeforeScanBlock = nullptr;
+  /// Dominates the body of the loop before scan directive
+  llvm::BasicBlock *OMPAfterScanBlock = nullptr;
+  /// Controls the flow to before or after scan blocks
+  llvm::BasicBlock *OMPScanDispatch = nullptr;
+  /// Exit block of loop body
+  llvm::BasicBlock *OMPScanLoopExit = nullptr;
+  /// Block before loop body where scan initializations are done
+  llvm::BasicBlock *OMPScanInit = nullptr;
+  /// Block after loop body where scan finalizations are done
+  llvm::BasicBlock *OMPScanFinish = nullptr;
+  /// If true, it indicates Input phase is lowered; else it indicates
+  /// ScanPhase is lowered
+  bool OMPFirstScanLoop = false;
+  /// Holds the value of iterator of canonical loop. The value is used to index
+  /// temporary buffer for initializations and reading.
+  llvm::Value *IV;
+};
+
 
 } // end namespace llvm
 

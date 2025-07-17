@@ -5368,7 +5368,7 @@ void createScan(llvm::Value *scanVar, llvm::Type *scanType,
   using InsertPointTy = OpenMPIRBuilder::InsertPointTy;
   ASSERT_EXPECTED_INIT(
       InsertPointTy, retIp,
-      OMPBuilder.createScan(Loc, allocaIP, {scanVar}, {scanType}, true));
+      OMPBuilder.createScan(Loc, allocaIP, {scanVar}, {scanType}, true, nullptr));
   Builder.restoreIP(retIp);
 }
 
@@ -5395,15 +5395,15 @@ TEST_F(OpenMPIRBuilderTest, ScanReduction) {
                AllocaIP);
     return Error::success();
   };
-  SmallVector<CanonicalLoopInfo *> Loops;
-  ASSERT_EXPECTED_INIT(SmallVector<CanonicalLoopInfo *>, loopsVec,
+  ScanInformation * scanInfo;
+  ASSERT_EXPECTED_INIT(ScanInformation *, scanInfoOut,
                        OMPBuilder.createCanonicalScanLoops(
                            Loc, LoopBodyGenCB, StartVal, StopVal, Step, false,
                            false, Builder.saveIP(), "scan"));
-  Loops = loopsVec;
-  EXPECT_EQ(Loops.size(), 2U);
-  CanonicalLoopInfo *InputLoop = Loops.front();
-  CanonicalLoopInfo *ScanLoop = Loops.back();
+  scanInfo = scanInfoOut;
+  //EXPECT_EQ(Loops.size(), 2U);
+  CanonicalLoopInfo *InputLoop = scanInfo->InputLoop;
+  CanonicalLoopInfo *ScanLoop = scanInfo->ScanLoop;
   Builder.restoreIP(ScanLoop->getAfterIP());
   InputLoop->assertOK();
   ScanLoop->assertOK();
@@ -5417,7 +5417,7 @@ TEST_F(OpenMPIRBuilderTest, ScanReduction) {
   OpenMPIRBuilder::LocationDescription RedLoc({InputLoop->getAfterIP(), DL});
   llvm::BasicBlock *Cont = splitBB(Builder, false, "omp.scan.loop.cont");
   ASSERT_EXPECTED_INIT(InsertPointTy, retIp,
-                       OMPBuilder.emitScanReduction(RedLoc, ReductionInfos));
+                       OMPBuilder.emitScanReduction(RedLoc, ReductionInfos, scanInfo));
   Builder.restoreIP(retIp);
   Builder.CreateBr(Cont);
   Builder.SetInsertPoint(Cont);
