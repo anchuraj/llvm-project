@@ -39,6 +39,8 @@ class Loop;
 class LoopAnalysis;
 class LoopInfo;
 
+using InsertPointTy = IRBuilder<>::InsertPoint;
+using InsertPointOrErrorTy = Expected<InsertPointTy>;
 /// Move the instruction after an InsertPoint to the beginning of another
 /// BasicBlock.
 ///
@@ -636,6 +638,17 @@ public:
   using LoopBodyGenCallbackTy =
       function_ref<Error(InsertPointTy CodeGenIP, Value *IndVar)>;
 
+  /// Description of a LLVM-IR insertion point (IP) and a debug/source location
+  /// (filename, line, column, ...).
+  struct LocationDescription {
+    LocationDescription(const IRBuilderBase &IRB)
+        : IP(IRB.saveIP()), DL(IRB.getCurrentDebugLocation()) {}
+    LocationDescription(const InsertPointTy &IP) : IP(IP) {}
+    LocationDescription(const InsertPointTy &IP, const DebugLoc &DL)
+        : IP(IP), DL(DL) {}
+    InsertPointTy IP;
+    DebugLoc DL;
+  };
   /// Callback type for variable privatization (think copy & default
   /// constructor).
   ///
@@ -657,18 +670,6 @@ public:
   using PrivatizeCallbackTy = function_ref<InsertPointOrErrorTy(
       InsertPointTy AllocaIP, InsertPointTy CodeGenIP, Value &Original,
       Value &Inner, Value *&ReplVal)>;
-
-  /// Description of a LLVM-IR insertion point (IP) and a debug/source location
-  /// (filename, line, column, ...).
-  struct LocationDescription {
-    LocationDescription(const IRBuilderBase &IRB)
-        : IP(IRB.saveIP()), DL(IRB.getCurrentDebugLocation()) {}
-    LocationDescription(const InsertPointTy &IP) : IP(IP) {}
-    LocationDescription(const InsertPointTy &IP, const DebugLoc &DL)
-        : IP(IP), DL(DL) {}
-    InsertPointTy IP;
-    DebugLoc DL;
-  };
 
   /// Emitter methods for OpenMP directives.
   ///
@@ -779,7 +780,7 @@ public:
   Expected<ScanInformation *> createCanonicalScanLoops(
       const LocationDescription &Loc, LoopBodyGenCallbackTy BodyGenCB,
       Value *Start, Value *Stop, Value *Step, bool IsSigned, bool InclusiveStop,
-      InsertPointTy ComputeIP, const Twine &Name);
+      InsertPointTy ComputeIP, const Twine &Name, ScanInformation *ScanInfo);
 
   /// Calculate the trip count of a canonical loop.
   ///
@@ -853,12 +854,11 @@ public:
   ///
   /// \returns An object representing the created control flow structure which
   ///          can be used for loop-associated directives.
-  LLVM_ABI Expected<CanonicalLoopInfo *>
-  createCanonicalLoop(const LocationDescription &Loc,
-                      LoopBodyGenCallbackTy BodyGenCB, Value *Start,
-                      Value *Stop, Value *Step, bool IsSigned,
-                      bool InclusiveStop, InsertPointTy ComputeIP = {},
-                      const Twine &Name = "loop", ScanInformation *ScanInfo = nullptr, bool InScan = false);
+  LLVM_ABI Expected<CanonicalLoopInfo *> createCanonicalLoop(
+      const LocationDescription &Loc, LoopBodyGenCallbackTy BodyGenCB,
+      Value *Start, Value *Stop, Value *Step, bool IsSigned, bool InclusiveStop,
+      InsertPointTy ComputeIP = {}, const Twine &Name = "loop",
+      ScanInformation *ScanInfo = nullptr, bool InScan = false);
 
   /// Collapse a loop nest into a single loop.
   ///
@@ -2740,8 +2740,7 @@ public:
                                   InsertPointTy AllocaIP,
                                   ArrayRef<llvm::Value *> ScanVars,
                                   ArrayRef<llvm::Type *> ScanVarsType,
-                                  bool IsInclusive,
-                                  ScanInformation *ScanInfo);
+                                  bool IsInclusive, ScanInformation *ScanInfo);
   /// Generator for '#omp critical'
   ///
   /// \param Loc The insert and source location description.
@@ -3876,6 +3875,7 @@ public:
   /// requirements of an OpenMP canonical loop anymore.
   LLVM_ABI void invalidate();
 };
+
 struct ScanInformation {
   CanonicalLoopInfo *InputLoop;
   CanonicalLoopInfo *ScanLoop;
@@ -3886,8 +3886,8 @@ struct ScanInformation {
   /// It is used for scan buffer allocation and finalization
   llvm::Value *Span;
 
-  ///Variables that help the lowering of body of input and scan loop.
-  /// Dominates the body of the loop before scan directive
+  /// Variables that help the lowering of body of input and scan loop.
+  ///  Dominates the body of the loop before scan directive
   llvm::BasicBlock *OMPBeforeScanBlock = nullptr;
   /// Dominates the body of the loop before scan directive
   llvm::BasicBlock *OMPAfterScanBlock = nullptr;
@@ -3905,8 +3905,17 @@ struct ScanInformation {
   /// Holds the value of iterator of canonical loop. The value is used to index
   /// temporary buffer for initializations and reading.
   llvm::Value *IV;
-};
 
+  /// lambdas to be called when scan directive is encountered
+  llvm::function_ref<InsertPointOrErrorTy(
+      const InsertPointTy &Loc, bool IsInclusive,
+      ArrayRef<llvm::Value *> ScanVars, ArrayRef<llvm::Type *> ScanVarsType)>
+      InputLoopScanSplitCode;
+  llvm::function_ref<InsertPointOrErrorTy(
+      const InsertPointTy &Loc, bool IsInclusive,
+      ArrayRef<llvm::Value *> ScanVars, ArrayRef<llvm::Type *> ScanVarsType)>
+      ScanLoopScanSplitCode;
+};
 
 } // end namespace llvm
 
