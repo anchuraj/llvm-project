@@ -2922,19 +2922,23 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   if (failed(handleError(afterIP, opInst)))
     return failure();
   builder.restoreIP(*afterIP);
-  // afterIP =
-  //     scanInfo->InputLoopScanSplitCode(
-  //         *afterIP, isInclusive, llvmScanVars, llvmScanVarsType);
-  // if (failed(handleError(afterIP, opInst)))
-  //   return failure();
-  // builder.restoreIP(*afterIP);
-  // afterIP =
-  //     scanInfo->ScanLoopScanSplitCode(
-  //         *afterIP, isInclusive, llvmScanVars, llvmScanVarsType);
-  // if (failed(handleError(afterIP, opInst)))
-  //   return failure();
+ 
+   //if(scanInfo->OMPFirstScanLoop) {
+   //  afterIP =
+   //      scanInfo->InputLoopScanSplitCode(
+   //          ompLoc.IP, isInclusive, llvmScanVars, llvmScanVarsType, scanInfo);
+   //  if (failed(handleError(afterIP, opInst)))
+   //    return failure();
+   //  builder.restoreIP(*afterIP);
+   //} else {
+   //  afterIP =
+   //      scanInfo->ScanLoopScanSplitCode(
+   //          ompLoc.IP, isInclusive, llvmScanVars, llvmScanVarsType, scanInfo);
+   //  if (failed(handleError(afterIP, opInst)))
+   //    return failure();
 
-  // builder.restoreIP(*afterIP);
+   //  builder.restoreIP(*afterIP);
+   //}
 
   // TODO: The argument of LoopnestOp is stored into the index variable and this
   // variable is used across scan operation. However that makes the mlir
@@ -3117,6 +3121,23 @@ convertOmpLoopNest(Operation &opInst, llvm::IRBuilderBase &builder,
                    LLVM::ModuleTranslation &moduleTranslation) {
   llvm::OpenMPIRBuilder *ompBuilder = moduleTranslation.getOpenMPBuilder();
   auto loopOp = cast<omp::LoopNestOp>(opInst);
+  //  if (auto wsloopOp = loopOp->getParentOfType<omp::WsloopOp>()) {
+  //    bool isInScanRegion =
+  //        wsloopOp.getReductionMod() && (wsloopOp.getReductionMod().value() ==
+  //                                       mlir::omp::ReductionModifier::inscan);
+  //    if (isInScanRegion) {
+  //      //TODO: Handle nesting if Scan loop is nested in a loop
+  //      assert(loopOp.getNumLoops() == 1);
+  //      llvm::Expected<llvm::ScanInformation *> res = ompBuilder->ScanReductionInitialize();
+  //          //(llvm::ScanInformation *)malloc(sizeof(llvm::ScanInformation));
+  //      if (failed(handleError(res, *loopOp)))
+  //        return failure();
+  //      llvm::ScanInformation *ScanInfo = res.get();
+  //      moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
+  //          [&](OpenMPLoopInfoStackFrame &frame) {
+  //            frame.ScanInfo = ScanInfo;
+  //            return WalkResult::interrupt();
+  //          });
 
   // Set up the source location value for OpenMP runtime.
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
@@ -3178,8 +3199,11 @@ convertOmpLoopNest(Operation &opInst, llvm::IRBuilderBase &builder,
       if (isInScanRegion) {
         //TODO: Handle nesting if Scan loop is nested in a loop
         assert(loopOp.getNumLoops() == 1);
-        llvm::ScanInformation *ScanInfo =
-            (llvm::ScanInformation *)malloc(sizeof(llvm::ScanInformation));
+        llvm::Expected<llvm::ScanInformation *> res = ompBuilder->ScanReductionInitialize();
+            //(llvm::ScanInformation *)malloc(sizeof(llvm::ScanInformation));
+        if (failed(handleError(res, *loopOp)))
+          return failure();
+        llvm::ScanInformation *ScanInfo = res.get();
         moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
             [&](OpenMPLoopInfoStackFrame &frame) {
               frame.ScanInfo = ScanInfo;

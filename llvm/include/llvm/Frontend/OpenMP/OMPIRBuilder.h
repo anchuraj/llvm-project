@@ -753,6 +753,8 @@ public:
                       LoopBodyGenCallbackTy BodyGenCB, Value *TripCount,
                       const Twine &Name = "loop");
 
+  Expected<ScanInformation *> ScanReductionInitialize();
+  //InsertPointTy allocaIp, Value *Span);
   /// Generator for the control flow structure of an OpenMP canonical loops if
   /// the parent directive has an `inscan` modifier specified.
   /// If the `inscan` modifier is specified, the region of the parent is
@@ -3881,7 +3883,7 @@ struct ScanInformation {
   CanonicalLoopInfo *ScanLoop;
   /// Maps the private reduction variable to the pointer of the temporary
   /// buffer
-  llvm::SmallDenseMap<llvm::Value *, llvm::Value *> ScanBuffPtrs;
+  llvm::SmallDenseMap<llvm::Value *, llvm::Value *>  *ScanBuffPtrs;
   /// Holds the total span of the canonical loop that is being lowered.
   /// It is used for scan buffer allocation and finalization
   llvm::Value *Span;
@@ -3909,11 +3911,11 @@ struct ScanInformation {
   /// lambdas to be called when scan directive is encountered
   llvm::function_ref<InsertPointOrErrorTy(
       const InsertPointTy &Loc, bool IsInclusive,
-      ArrayRef<llvm::Value *> ScanVars, ArrayRef<llvm::Type *> ScanVarsType)>
+      ArrayRef<llvm::Value *> ScanVars, ArrayRef<llvm::Type *> ScanVarsType, ScanInformation *ScanInfo)>
       InputLoopScanSplitCode;
   llvm::function_ref<InsertPointOrErrorTy(
       const InsertPointTy &Loc, bool IsInclusive,
-      ArrayRef<llvm::Value *> ScanVars, ArrayRef<llvm::Type *> ScanVarsType)>
+      ArrayRef<llvm::Value *> ScanVars, ArrayRef<llvm::Type *> ScanVarsType, ScanInformation *ScanInfo)>
       ScanLoopScanSplitCode;
 };
 

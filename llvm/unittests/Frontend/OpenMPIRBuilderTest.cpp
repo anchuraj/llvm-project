@@ -5373,11 +5373,11 @@ void createScan(llvm::Value *scanVar, llvm::Type *scanType,
   Builder.restoreIP(retIp);
   ASSERT_EXPECTED_INIT(
       InsertPointTy, retInputLoopIp,
-      scanInfo->InputLoopScanSplitCode(retIp, true, {scanVar}, {scanType}));
+      scanInfo->InputLoopScanSplitCode(retIp, true, {scanVar}, {scanType}, scanInfo));
   Builder.restoreIP(retInputLoopIp);
   ASSERT_EXPECTED_INIT(InsertPointTy, retScanLoopIp,
                        scanInfo->ScanLoopScanSplitCode(retInputLoopIp, true,
-                                                       {scanVar}, {scanType}));
+                                                       {scanVar}, {scanType}, scanInfo));
   Builder.restoreIP(retScanLoopIp);
 }
 
