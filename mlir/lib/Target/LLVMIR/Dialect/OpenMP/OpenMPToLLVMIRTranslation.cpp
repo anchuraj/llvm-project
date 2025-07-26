@@ -94,7 +94,7 @@ public:
   // For constructs like scan, one Loop info frame can contain multiple
   // Canonical Loops
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos;
-  llvm::ScanInformation *ScanInfo;
+  llvm::ScanInfo *ScanInfo;
 };
 
 /// Custom error class to signal translation errors that don't need reporting,
@@ -557,9 +557,9 @@ findCurrentLoopInfos(LLVM::ModuleTranslation &moduleTranslation) {
   return loopInfos;
 }
 
-static llvm::ScanInformation *
+static llvm::ScanInfo *
 findScanInfo(LLVM::ModuleTranslation &moduleTranslation) {
-  llvm::ScanInformation *scanInfo;
+  llvm::ScanInfo *scanInfo;
   moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
       [&](OpenMPLoopInfoStackFrame &frame) {
         scanInfo = frame.ScanInfo;
@@ -2640,7 +2640,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
                          owningReductionGens, owningAtomicReductionGens,
                          privateReductionVariables, reductionInfos);
     llvm::BasicBlock *cont = splitBB(builder, false, "omp.scan.loop.cont");
-    llvm::ScanInformation *scanInfo = findScanInfo(moduleTranslation);
+    llvm::ScanInfo *scanInfo = findScanInfo(moduleTranslation);
     llvm::OpenMPIRBuilder::InsertPointOrErrorTy redIP =
         ompBuilder->emitScanReduction(builder.saveIP(), reductionInfos,
                                       scanInfo);
@@ -2914,7 +2914,7 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   }
   llvm::OpenMPIRBuilder::InsertPointTy allocaIP = parallelAllocaIP;
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
-  llvm::ScanInformation *scanInfo = findScanInfo(moduleTranslation);
+  llvm::ScanInfo *scanInfo = findScanInfo(moduleTranslation);
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
       moduleTranslation.getOpenMPBuilder()->createScan(
           ompLoc, allocaIP, llvmScanVars, llvmScanVarsType, isInclusive,
@@ -3128,11 +3128,12 @@ convertOmpLoopNest(Operation &opInst, llvm::IRBuilderBase &builder,
   //    if (isInScanRegion) {
   //      //TODO: Handle nesting if Scan loop is nested in a loop
   //      assert(loopOp.getNumLoops() == 1);
-  //      llvm::Expected<llvm::ScanInformation *> res = ompBuilder->ScanReductionInitialize();
-  //          //(llvm::ScanInformation *)malloc(sizeof(llvm::ScanInformation));
+  //      llvm::Expected<llvm::ScanInfo *> res =
+  //      ompBuilder->ScanReductionInitialize();
+  //          //(llvm::ScanInfo *)malloc(sizeof(llvm::ScanInfo));
   //      if (failed(handleError(res, *loopOp)))
   //        return failure();
-  //      llvm::ScanInformation *ScanInfo = res.get();
+  //      llvm::ScanInfo *ScanInfo = res.get();
   //      moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
   //          [&](OpenMPLoopInfoStackFrame &frame) {
   //            frame.ScanInfo = ScanInfo;
@@ -3199,26 +3200,26 @@ convertOmpLoopNest(Operation &opInst, llvm::IRBuilderBase &builder,
       if (isInScanRegion) {
         //TODO: Handle nesting if Scan loop is nested in a loop
         assert(loopOp.getNumLoops() == 1);
-        llvm::Expected<llvm::ScanInformation *> res = ompBuilder->ScanReductionInitialize();
-            //(llvm::ScanInformation *)malloc(sizeof(llvm::ScanInformation));
+        llvm::Expected<llvm::ScanInfo *> res = ompBuilder->scanInfoInitialize();
+        //(llvm::ScanInfo *)malloc(sizeof(llvm::ScanInfo));
         if (failed(handleError(res, *loopOp)))
           return failure();
-        llvm::ScanInformation *ScanInfo = res.get();
+        llvm::ScanInfo *ScanInfo = res.get();
         moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
             [&](OpenMPLoopInfoStackFrame &frame) {
               frame.ScanInfo = ScanInfo;
               return WalkResult::interrupt();
             });
-        llvm::Expected<llvm::ScanInformation *> loopResults =
-            ompBuilder->createCanonicalScanLoops(
+        llvm::Expected<llvm::SmallVector<llvm::CanonicalLoopInfo *>>
+            loopResults = ompBuilder->createCanonicalScanLoops(
                 loc, bodyGen, lowerBound, upperBound, step,
                 /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP, "loop",
                 ScanInfo);
 
         if (failed(handleError(loopResults, *loopOp)))
           return failure();
-        auto inputLoop = loopResults.get()->InputLoop;
-        auto scanLoop = loopResults.get()->ScanLoop;
+        auto inputLoop = loopResults.get().front();
+        auto scanLoop = loopResults.get().back();
         moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
             [&](OpenMPLoopInfoStackFrame &frame) {
               frame.loopInfos.push_back(inputLoop);
