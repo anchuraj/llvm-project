@@ -202,7 +202,7 @@ void Flang::addLTOOptions(const ArgList &Args, ArgStringList &CmdArgs) const {
     CmdArgs.push_back(Args.MakeArgString("-flto-partitions=" + A));
   }
   Args.addAllArgs(CmdArgs, {options::OPT_ffat_lto_objects,
-                            options::OPT_fno_fat_lto_objects});
+                            options::OPT_fno_fat_lto_objects, options::OPT_fsplit_lto_unit, options::OPT_fno_split_lto_unit});
 }
 
 void Flang::addPicOptions(const ArgList &Args, ArgStringList &CmdArgs) const {

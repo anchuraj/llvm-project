@@ -71,6 +71,7 @@
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
+#include <cstdint>
 #include <memory>
 #include <system_error>
 
@@ -799,6 +800,12 @@ void CodeGenAction::generateLLVMIR() {
     return;
   }
 
+  if(opts.SplitLTOUnit){
+        llvmModule->addModuleFlag(llvm::Module::Error, "EnableSplitLTOUnit", uint32_t(1));
+  }
+  if(opts.PrepareForFullLTO){
+        llvmModule->addModuleFlag(llvm::Module::Error, "ThinLTO", uint32_t(0));
+  }
   // Set PIC/PIE level LLVM module flags.
   if (opts.PICLevel > 0) {
     llvmModule->setPICLevel(static_cast<llvm::PICLevel::Level>(opts.PICLevel));

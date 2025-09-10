@@ -329,6 +329,10 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
     opts.PrepareForFatLTO = true;
   }
 
+  if (args.hasArg(clang::driver::options::OPT_fsplit_lto_unit)) {
+    opts.SplitLTOUnit = true;
+  }
+
   // -flto=full/thin option.
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_flto_EQ)) {
