@@ -2655,7 +2655,6 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
     }
 
     // Set the correct branch target for task cancellation
-    popCancelFinalizationCB(cancelTerminators, *ompBuilder, wsloopIP.get());
     return llvm::success();
   };
 
@@ -2710,6 +2709,8 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
        return failure();
   }
 
+  //todo: change builder.saveIP to wsLoopIP
+    popCancelFinalizationCB(cancelTerminators, *ompBuilder, builder.saveIP());
   if (isInScanRegion) {
     SmallVector<Region *> reductionRegions;
     llvm::transform(reductionDecls, std::back_inserter(reductionRegions),
