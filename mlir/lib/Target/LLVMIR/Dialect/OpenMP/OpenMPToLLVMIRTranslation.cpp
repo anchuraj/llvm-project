@@ -46,7 +46,6 @@
 
 using namespace mlir;
 
-llvm::SmallDenseMap<llvm::Value *, llvm::Type *> ReductionVarToType;
 llvm::OpenMPIRBuilder::InsertPointTy
     parallelAllocaIP; // TODO: change this alloca IP to point to originalvar
                       // allocaIP. ReductionDecl need to be linked to scan var.
@@ -93,7 +92,9 @@ public:
   // For constructs like scan, one Loop info frame can contain multiple
   // Canonical Loops
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos;
-   llvm::ScanInfo *ScanInfo;
+  llvm::ScanInfo *ScanInfo;
+  llvm::DenseMap<llvm::Value *, llvm::Type *> *reductionVarToType =
+      new llvm::DenseMap<llvm::Value *, llvm::Type *>();
 };
 
 /// Custom error class to signal translation errors that don't need reporting,
@@ -565,6 +566,17 @@ findScanInfo(LLVM::ModuleTranslation &moduleTranslation) {
         return WalkResult::interrupt();
       });
   return scanInfo;
+}
+
+static llvm::DenseMap<llvm::Value *, llvm::Type *> *
+findReductionVarTypes(LLVM::ModuleTranslation &moduleTranslation) {
+  llvm::DenseMap<llvm::Value *, llvm::Type *> *reductionVarToType = nullptr;
+  moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
+      [&](OpenMPLoopInfoStackFrame &frame) {
+        reductionVarToType = frame.reductionVarToType;
+        return WalkResult::interrupt();
+      });
+  return reductionVarToType;
 }
 
 /// Converts the given region that appears within an OpenMP dialect operation to
@@ -1279,6 +1291,8 @@ initReductionVars(OP op, ArrayRef<BlockArgument> reductionArgs,
   for (auto [data, addr] : deferredStores)
     builder.CreateStore(data, addr);
 
+  llvm::DenseMap<llvm::Value *, llvm::Type *> *reductionVarToType =
+      findReductionVarTypes(moduleTranslation);
   // Before the loop, store the initial values of reductions into reduction
   // variables. Although this could be done after allocas, we don't want to mess
   // up with the alloca insertion point.
@@ -1287,7 +1301,7 @@ initReductionVars(OP op, ArrayRef<BlockArgument> reductionArgs,
     //TODO: move this datastructure to stack frame
     llvm::Type *reductionType =
         moduleTranslation.convertType(reductionDecls[i].getType());
-    ReductionVarToType[privateReductionVariables[i]] = reductionType;
+    (*reductionVarToType)[privateReductionVariables[i]] = reductionType;
 
     // map block argument to initializer region
     mapInitializationArgs(op, moduleTranslation, reductionDecls,
@@ -1359,6 +1373,8 @@ static void collectReductionInfo(
 
   // Collect the reduction information.
   reductionInfos.reserve(numReductions);
+  llvm::DenseMap<llvm::Value *, llvm::Type *> *reductionVarToType =
+      findReductionVarTypes(moduleTranslation);
   for (unsigned i = 0; i < numReductions; ++i) {
     llvm::OpenMPIRBuilder::ReductionGenAtomicCBTy atomicGen = nullptr;
     if (owningAtomicReductionGens[i])
@@ -1367,7 +1383,7 @@ static void collectReductionInfo(
         moduleTranslation.lookupValue(loop.getReductionVars()[i]);
     llvm::Type *reductionType =
         moduleTranslation.convertType(reductionDecls[i].getType());
-    ReductionVarToType[privateReductionVariables[i]] = reductionType;
+    (*reductionVarToType)[privateReductionVariables[i]] = reductionType;
     reductionInfos.push_back(
         {reductionType, variable, privateReductionVariables[i],
          /*EvaluationKind=*/llvm::OpenMPIRBuilder::EvalKind::Scalar,
@@ -3087,10 +3103,13 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   mlir::OperandRange mlirScanVars = scanOp.getInclusiveVars();
   if (!isInclusive)
     mlirScanVars = scanOp.getExclusiveVars();
+
+  llvm::DenseMap<llvm::Value *, llvm::Type *> *reductionVarToType =
+      findReductionVarTypes(moduleTranslation);
   for (auto val : mlirScanVars) {
     llvm::Value *llvmVal = moduleTranslation.lookupValue(val);
     llvmScanVars.push_back(llvmVal);
-    llvmScanVarsType.push_back(ReductionVarToType[llvmVal]);
+    llvmScanVarsType.push_back((*reductionVarToType)[llvmVal]);
     val.getDefiningOp();
   }
   auto parallelOp = scanOp->getParentOfType<omp::ParallelOp>();
