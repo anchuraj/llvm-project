@@ -1,0 +1,84 @@
+grep: out: input file is also the output
+grep: .git/index: binary file matches
+.git/FETCH_HEAD:36f69702f07f8bd71766aa3be626029bbd611bff	not-for-merge	branch 'atomic-control-backend' of github.com:anchuraj/llvm-project
+.git/FETCH_HEAD:7cde5ef743d146e102b4fce5bfd37690b481eded	not-for-merge	branch 'atomic-control-end-to-end' of github.com:anchuraj/llvm-project
+.git/FETCH_HEAD:f8a77d77a7b8a84f3dbd69a3f5c4f94bcae48093	not-for-merge	branch 'atomic-control-fix' of github.com:anchuraj/llvm-project
+.git/FETCH_HEAD:05dbc02668f7b5c705a83da3f41aec4816a59c50	not-for-merge	branch 'atomic-control-frontend' of github.com:anchuraj/llvm-project
+.git/FETCH_HEAD:91808efe5d41eda864502e13c7126a981674f653	not-for-merge	branch 'atomic-control-lowering' of github.com:anchuraj/llvm-project
+.git/FETCH_HEAD:ea4c5ec5657818cc4c9a304ce103d9336c60df52	not-for-merge	branch 'llvm-atomic-control' of github.com:anchuraj/llvm-project
+.git/FETCH_HEAD:29d50d7bc68a57cfa1fea6b8d5f1af7053f426f4	not-for-merge	branch 'revert-atomic-control' of github.com:anchuraj/llvm-project
+.git/info/refs:a81be7e0790e375499c625b7bcac00ad6e5b69ed	refs/heads/atomic-control-backend
+.git/info/refs:7cde5ef743d146e102b4fce5bfd37690b481eded	refs/heads/atomic-control-end-to-end
+.git/info/refs:05dbc02668f7b5c705a83da3f41aec4816a59c50	refs/heads/atomic-control-frontend
+.git/info/refs:49cc2dcd22008935b954c96cd30968eea6f10304	refs/heads/atomic-control-lowering
+.git/info/refs:ea4c5ec5657818cc4c9a304ce103d9336c60df52	refs/heads/llvm-atomic-control
+.git/info/refs:36f69702f07f8bd71766aa3be626029bbd611bff	refs/remotes/origin/atomic-control-backend
+.git/info/refs:7cde5ef743d146e102b4fce5bfd37690b481eded	refs/remotes/origin/atomic-control-end-to-end
+.git/info/refs:05dbc02668f7b5c705a83da3f41aec4816a59c50	refs/remotes/origin/atomic-control-frontend
+.git/info/refs:49cc2dcd22008935b954c96cd30968eea6f10304	refs/remotes/origin/atomic-control-lowering
+.git/info/refs:ea4c5ec5657818cc4c9a304ce103d9336c60df52	refs/remotes/origin/llvm-atomic-control
+.git/config:[branch "llvm-atomic-control"]
+.git/config:[branch "atomic-control-end-to-end"]
+.git/config:[branch "atomic-control-frontend"]
+.git/config:[branch "atomic-control-backend"]
+.git/config:[branch "atomic-control-lowering"]
+.git/config:[branch "atomic-control-fix"]
+.git/logs/HEAD:282af2ddfcfa14a19e2cf596de370c2ead13d0a9 282af2ddfcfa14a19e2cf596de370c2ead13d0a9 Anchu Rajendran <asudhaku@amd.com> 1747762350 -0500	checkout: moving from master to llvm-atomic-control
+.git/logs/HEAD:ea4c5ec5657818cc4c9a304ce103d9336c60df52 282af2ddfcfa14a19e2cf596de370c2ead13d0a9 Anchu Rajendran <asudhaku@amd.com> 1747769654 -0500	checkout: moving from llvm-atomic-control to master
+.git/logs/HEAD:282af2ddfcfa14a19e2cf596de370c2ead13d0a9 282af2ddfcfa14a19e2cf596de370c2ead13d0a9 Anchu Rajendran <asudhaku@amd.com> 1749067828 -0500	checkout: moving from master to atomic-control-end-to-end
+.git/logs/HEAD:7cde5ef743d146e102b4fce5bfd37690b481eded 356dc628cb4855604ef9fdb800f53afd48b3a0da Anchu Rajendran <asudhaku@amd.com> 1749246288 -0500	checkout: moving from atomic-control-end-to-end to master
+.git/logs/HEAD:356dc628cb4855604ef9fdb800f53afd48b3a0da 7cde5ef743d146e102b4fce5bfd37690b481eded Anchu Rajendran <asudhaku@amd.com> 1749249323 -0500	checkout: moving from master to atomic-control-end-to-end
+.git/logs/HEAD:7cde5ef743d146e102b4fce5bfd37690b481eded 356dc628cb4855604ef9fdb800f53afd48b3a0da Anchu Rajendran <asudhaku@amd.com> 1749489055 -0500	checkout: moving from atomic-control-end-to-end to master
+.git/logs/HEAD:356dc628cb4855604ef9fdb800f53afd48b3a0da 7cde5ef743d146e102b4fce5bfd37690b481eded Anchu Rajendran <asudhaku@amd.com> 1749490372 -0500	checkout: moving from master to atomic-control-end-to-end
+.git/logs/HEAD:7cde5ef743d146e102b4fce5bfd37690b481eded 356dc628cb4855604ef9fdb800f53afd48b3a0da Anchu Rajendran <asudhaku@amd.com> 1749490409 -0500	checkout: moving from atomic-control-end-to-end to master
+.git/logs/HEAD:356dc628cb4855604ef9fdb800f53afd48b3a0da 7cde5ef743d146e102b4fce5bfd37690b481eded Anchu Rajendran <asudhaku@amd.com> 1749490431 -0500	checkout: moving from master to atomic-control-end-to-end
+.git/logs/HEAD:7cde5ef743d146e102b4fce5bfd37690b481eded 7cde5ef743d146e102b4fce5bfd37690b481eded Anchu Rajendran <asudhaku@amd.com> 1749490449 -0500	checkout: moving from atomic-control-end-to-end to atomic-control-frontend
+.git/logs/HEAD:f5a469317a1446d17bc0fb6feb10849d70718368 f5a469317a1446d17bc0fb6feb10849d70718368 Anchu Rajendran <asudhaku@amd.com> 1751481379 -0500	rebase (continue) (finish): returning to refs/heads/atomic-control-frontend
+.git/logs/HEAD:bc7e45218839bcfb429cf647d22c360271b7c898 bc7e45218839bcfb429cf647d22c360271b7c898 Anchu Rajendran <asudhaku@amd.com> 1751484306 -0500	rebase (continue) (finish): returning to refs/heads/atomic-control-backend
+.git/logs/HEAD:0b5e9d29d0c9a741aaf7fed04b5d411c66fc9fdf 8523e13fda8d1c38762f7ed54369401f87c98b79 Anchu Rajendran <asudhaku@amd.com> 1752006868 -0500	checkout: moving from atomic-control-frontend to scan-clang-support
+.git/logs/HEAD:8523e13fda8d1c38762f7ed54369401f87c98b79 0b5e9d29d0c9a741aaf7fed04b5d411c66fc9fdf Anchu Rajendran <asudhaku@amd.com> 1752503653 -0500	checkout: moving from scan-clang-support to atomic-control-frontend
+.git/logs/HEAD:352ae37ba5560cf132f46811d2b6ffb5d9a0c6ce e996153cae936cceb82695dc617c02a41531efff Anchu Rajendran <asudhaku@amd.com> 1752519877 -0500	checkout: moving from atomic-control-frontend to scan-IRBuilder-Support
+.git/logs/HEAD:7a275da90cd929ec196e1fe5577e6d51728deb00 352ae37ba5560cf132f46811d2b6ffb5d9a0c6ce Anchu Rajendran <asudhaku@amd.com> 1753367035 -0500	checkout: moving from scan-irb to atomic-control-frontend
+.git/logs/HEAD:352ae37ba5560cf132f46811d2b6ffb5d9a0c6ce a63f57262898588b576d66e5fd79c0aa64b35f2d Anchu Rajendran <asudhaku@amd.com> 1753367086 -0500	checkout: moving from atomic-control-frontend to master
+.git/logs/HEAD:74505806b6446d1868c1e07cbaebfaa29291beb5 352ae37ba5560cf132f46811d2b6ffb5d9a0c6ce Anchu Rajendran <asudhaku@amd.com> 1753367151 -0500	checkout: moving from master to atomic-control-frontend
+.git/logs/HEAD:c56b5dde297749cb208299c875b462e5f11a6ad1 c56b5dde297749cb208299c875b462e5f11a6ad1 Anchu Rajendran <asudhaku@amd.com> 1753367249 -0500	rebase (continue) (finish): returning to refs/heads/atomic-control-frontend
+.git/logs/HEAD:a456168f1d80476314f10c8e18903c52a7086d4f e996153cae936cceb82695dc617c02a41531efff Anchu Rajendran <asudhaku@amd.com> 1753376065 -0500	checkout: moving from atomic-control-frontend to scan-IRBuilder-Support
+.git/logs/HEAD:a8fb6bdf0c7f3f3ca51679adfa96b0432d95c77f a456168f1d80476314f10c8e18903c52a7086d4f Anchu Rajendran <asudhaku@amd.com> 1753660333 -0500	checkout: moving from scan-IRBuilder-Support to atomic-control-frontend
+.git/logs/HEAD:05dbc02668f7b5c705a83da3f41aec4816a59c50 36f69702f07f8bd71766aa3be626029bbd611bff Anchu Rajendran <asudhaku@amd.com> 1753672563 -0500	checkout: moving from atomic-control-frontend to atomic-control-backend
+.git/logs/HEAD:36f69702f07f8bd71766aa3be626029bbd611bff 05dbc02668f7b5c705a83da3f41aec4816a59c50 Anchu Rajendran <asudhaku@amd.com> 1753672598 -0500	rebase (start): checkout atomic-control-frontend
+.git/logs/HEAD:24b019cfdf75c67dfd2e47f623e48f1be414e77f 24b019cfdf75c67dfd2e47f623e48f1be414e77f Anchu Rajendran <asudhaku@amd.com> 1753673784 -0500	rebase (continue) (finish): returning to refs/heads/atomic-control-backend
+.git/logs/HEAD:24b019cfdf75c67dfd2e47f623e48f1be414e77f 74505806b6446d1868c1e07cbaebfaa29291beb5 Anchu Rajendran <asudhaku@amd.com> 1753711513 -0500	checkout: moving from atomic-control-backend to master
+.git/logs/HEAD:a6532c2adac5c2d2ba67046bdc437be6a063d75d 24b019cfdf75c67dfd2e47f623e48f1be414e77f Anchu Rajendran <asudhaku@amd.com> 1753711622 -0500	checkout: moving from master to atomic-control-backend
+.git/logs/HEAD:a81be7e0790e375499c625b7bcac00ad6e5b69ed a81be7e0790e375499c625b7bcac00ad6e5b69ed Anchu Rajendran <asudhaku@amd.com> 1753711629 -0500	rebase (finish): returning to refs/heads/atomic-control-backend
+.git/logs/HEAD:a81be7e0790e375499c625b7bcac00ad6e5b69ed 05dbc02668f7b5c705a83da3f41aec4816a59c50 Anchu Rajendran <asudhaku@amd.com> 1753711674 -0500	checkout: moving from atomic-control-backend to atomic-control-frontend
+.git/logs/HEAD:05dbc02668f7b5c705a83da3f41aec4816a59c50 a81be7e0790e375499c625b7bcac00ad6e5b69ed Anchu Rajendran <asudhaku@amd.com> 1753711724 -0500	checkout: moving from atomic-control-frontend to atomic-control-backend
+.git/logs/HEAD:a81be7e0790e375499c625b7bcac00ad6e5b69ed 05dbc02668f7b5c705a83da3f41aec4816a59c50 Anchu Rajendran <asudhaku@amd.com> 1753711734 -0500	rebase (start): checkout atomic-control-frontend
+.git/logs/HEAD:a81be7e0790e375499c625b7bcac00ad6e5b69ed a6532c2adac5c2d2ba67046bdc437be6a063d75d Anchu Rajendran <asudhaku@amd.com> 1753712200 -0500	checkout: moving from atomic-control-backend to master
+.git/logs/HEAD:a6532c2adac5c2d2ba67046bdc437be6a063d75d a6532c2adac5c2d2ba67046bdc437be6a063d75d Anchu Rajendran <asudhaku@amd.com> 1753712222 -0500	checkout: moving from master to atomic-control-lowering
+.git/logs/HEAD:a723138cea5ac7e9d60c738980b683d0e657ad94 05dbc02668f7b5c705a83da3f41aec4816a59c50 Anchu Rajendran <asudhaku@amd.com> 1753820648 -0500	checkout: moving from atomic-control-lowering to atomic-control-frontend
+.git/logs/HEAD:05dbc02668f7b5c705a83da3f41aec4816a59c50 a723138cea5ac7e9d60c738980b683d0e657ad94 Anchu Rajendran <asudhaku@amd.com> 1753820654 -0500	checkout: moving from atomic-control-frontend to atomic-control-lowering
+.git/logs/HEAD:a723138cea5ac7e9d60c738980b683d0e657ad94 b2b5cec0e38ed3de7054089c8ef3698f37addac2 Anchu Rajendran <asudhaku@amd.com> 1753820748 -0500	pull origin atomic-control-lowering: Fast-forward
+.git/logs/HEAD:70547b5446c008bef574368fb8c388c4f9dea0d5 a8fb6bdf0c7f3f3ca51679adfa96b0432d95c77f Anchu Rajendran <asudhaku@amd.com> 1753995187 -0500	checkout: moving from atomic-control-lowering to scan-IRBuilder-Support
+.git/logs/HEAD:6eda5c3190f3cdbec21ebb03b2adfbea9fb6270f 70547b5446c008bef574368fb8c388c4f9dea0d5 Anchu Rajendran <asudhaku@amd.com> 1754585898 -0500	checkout: moving from scan-irb to atomic-control-lowering
+.git/logs/HEAD:49cc2dcd22008935b954c96cd30968eea6f10304 6eda5c3190f3cdbec21ebb03b2adfbea9fb6270f Anchu Rajendran <asudhaku@amd.com> 1754590470 -0500	checkout: moving from atomic-control-lowering to scan-irb
+.git/logs/HEAD:75cc77e55e12d39aed94702b0b1365e39713081e 75cc77e55e12d39aed94702b0b1365e39713081e Anchu Rajendran <asudhaku@amd.com> 1754596395 -0500	checkout: moving from master to revert-atomic-control
+.git/logs/HEAD:29d50d7bc68a57cfa1fea6b8d5f1af7053f426f4 6eda5c3190f3cdbec21ebb03b2adfbea9fb6270f Anchu Rajendran <asudhaku@amd.com> 1754598720 -0500	checkout: moving from revert-atomic-control to scan-irb
+.git/logs/HEAD:97f554249c564e769956abfcb3266925745482c5 97f554249c564e769956abfcb3266925745482c5 Anchu Rajendran <asudhaku@amd.com> 1755640908 -0500	checkout: moving from master to atomic-control-fix
+.git/logs/HEAD:f8a77d77a7b8a84f3dbd69a3f5c4f94bcae48093 f8a77d77a7b8a84f3dbd69a3f5c4f94bcae48093 Anchu Rajendran <asudhaku@amd.com> 1756834426 -0500	checkout: moving from atomic-control-fix to enable-lto-options
+.git/logs/refs/heads/atomic-control-lowering:a723138cea5ac7e9d60c738980b683d0e657ad94 b2b5cec0e38ed3de7054089c8ef3698f37addac2 Anchu Rajendran <asudhaku@amd.com> 1753820748 -0500	pull origin atomic-control-lowering: Fast-forward
+.git/logs/refs/heads/atomic-control-backend:36f69702f07f8bd71766aa3be626029bbd611bff 24b019cfdf75c67dfd2e47f623e48f1be414e77f Anchu Rajendran <asudhaku@amd.com> 1753673784 -0500	rebase (continue) (finish): refs/heads/atomic-control-backend onto 05dbc02668f7b5c705a83da3f41aec4816a59c50
+.git/logs/refs/heads/atomic-control-backend:24b019cfdf75c67dfd2e47f623e48f1be414e77f a81be7e0790e375499c625b7bcac00ad6e5b69ed Anchu Rajendran <asudhaku@amd.com> 1753711629 -0500	rebase (finish): refs/heads/atomic-control-backend onto a6532c2adac5c2d2ba67046bdc437be6a063d75d
+.git/logs/refs/heads/atomic-control-frontend:352ae37ba5560cf132f46811d2b6ffb5d9a0c6ce c56b5dde297749cb208299c875b462e5f11a6ad1 Anchu Rajendran <asudhaku@amd.com> 1753367249 -0500	rebase (continue) (finish): refs/heads/atomic-control-frontend onto 74505806b6446d1868c1e07cbaebfaa29291beb5
+.git/logs/refs/stash:beaf0916e616d1f57624bf40f8cd22ef64beda23 b5b3bd85ffebeee0637d295d136646b587e46f0e Anchu Rajendran <asudhaku@amd.com> 1749493382 -0500	WIP on atomic-control-frontend: 04029f84a20e atomic control support
+.git/logs/refs/stash:b5b3bd85ffebeee0637d295d136646b587e46f0e 90a1e3cb2041cbeef1eafb0c221febb8c9464651 Anchu Rajendran <asudhaku@amd.com> 1749678378 -0500	WIP on atomic-control-frontend: 26d8e6403840 R3: Addressing review comments
+.git/logs/refs/stash:9b5366ac44806cb29e53e2a68a6035254c1fa050 2aa69d64d11ca306072a73f559e9ec7de6fdcab2 Anchu Rajendran <asudhaku@amd.com> 1755725919 -0500	WIP on atomic-control-fix: e99cd6b2d138 fix to add the options in non-fc1 mode
+.git/packed-refs:a81be7e0790e375499c625b7bcac00ad6e5b69ed refs/heads/atomic-control-backend
+.git/packed-refs:7cde5ef743d146e102b4fce5bfd37690b481eded refs/heads/atomic-control-end-to-end
+.git/packed-refs:05dbc02668f7b5c705a83da3f41aec4816a59c50 refs/heads/atomic-control-frontend
+.git/packed-refs:49cc2dcd22008935b954c96cd30968eea6f10304 refs/heads/atomic-control-lowering
+.git/packed-refs:ea4c5ec5657818cc4c9a304ce103d9336c60df52 refs/heads/llvm-atomic-control
+.git/packed-refs:36f69702f07f8bd71766aa3be626029bbd611bff refs/remotes/origin/atomic-control-backend
+.git/packed-refs:7cde5ef743d146e102b4fce5bfd37690b481eded refs/remotes/origin/atomic-control-end-to-end
+.git/packed-refs:05dbc02668f7b5c705a83da3f41aec4816a59c50 refs/remotes/origin/atomic-control-frontend
+.git/packed-refs:49cc2dcd22008935b954c96cd30968eea6f10304 refs/remotes/origin/atomic-control-lowering
+.git/packed-refs:ea4c5ec5657818cc4c9a304ce103d9336c60df52 refs/remotes/origin/llvm-atomic-control
