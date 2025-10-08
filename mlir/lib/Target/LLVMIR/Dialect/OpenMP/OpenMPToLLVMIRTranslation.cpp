@@ -46,10 +46,6 @@
 
 using namespace mlir;
 
-llvm::OpenMPIRBuilder::InsertPointTy
-    parallelAllocaIP; // TODO: change this alloca IP to point to originalvar
-                      // allocaIP. ReductionDecl need to be linked to scan var.
-
 namespace {
 static llvm::omp::ScheduleKind
 convertToScheduleKind(std::optional<omp::ClauseScheduleKind> schedKind) {
@@ -82,6 +78,19 @@ public:
   llvm::OpenMPIRBuilder::InsertPointTy allocaInsertPoint;
 };
 
+/// ModuleTranslation stack frame for OpenMP operations. This keeps track of the
+/// insertion points for allocas of parent of the current parallel region.
+class OpenMPParallelAllocaStackFrame
+    : public StateStackFrameBase<OpenMPParallelAllocaStackFrame> {
+public:
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(OpenMPParallelAllocaStackFrame)
+
+  explicit OpenMPParallelAllocaStackFrame(llvm::OpenMPIRBuilder::InsertPointTy allocaIP)
+      : allocaInsertPoint(allocaIP) {}
+  llvm::OpenMPIRBuilder::InsertPointTy allocaInsertPoint;
+};
+
+
 /// Stack frame to hold a \see llvm::CanonicalLoopInfo representing the
 /// collapsed canonical loop information corresponding to an \c omp.loop_nest
 /// operation.
@@ -92,7 +101,7 @@ public:
   // For constructs like scan, one Loop info frame can contain multiple
   // Canonical Loops
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos;
-  llvm::ScanInfo *ScanInfo;
+  llvm::ScanInfo *scanInfo;
   llvm::DenseMap<llvm::Value *, llvm::Type *> *reductionVarToType =
       new llvm::DenseMap<llvm::Value *, llvm::Type *>();
 };
@@ -543,6 +552,17 @@ findAllocaInsertPoint(llvm::IRBuilderBase &builder,
       &funcEntryBlock, funcEntryBlock.getFirstInsertionPt());
 }
 
+static llvm::OpenMPIRBuilder::InsertPointTy
+findParallelAllocaIP(LLVM::ModuleTranslation &moduleTranslation) {
+  llvm::OpenMPIRBuilder::InsertPointTy parallelAllocaIP;
+  moduleTranslation.stackWalk<OpenMPParallelAllocaStackFrame>(
+      [&](OpenMPParallelAllocaStackFrame &frame) {
+        parallelAllocaIP = frame.allocaInsertPoint;
+        return WalkResult::interrupt();
+      });
+  return parallelAllocaIP;
+}
+
 /// Find the loop information structure for the loop nest being translated. It
 /// will return a `null` value unless called from the translation function for
 /// a loop wrapper operation after successfully translating its body.
@@ -562,7 +582,7 @@ findScanInfo(LLVM::ModuleTranslation &moduleTranslation) {
   llvm::ScanInfo *scanInfo;
   moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
       [&](OpenMPLoopInfoStackFrame &frame) {
-        scanInfo = frame.ScanInfo;
+        scanInfo = frame.scanInfo;
         return WalkResult::interrupt();
       });
   return scanInfo;
@@ -2911,8 +2931,9 @@ convertOmpParallel(omp::ParallelOp opInst, llvm::IRBuilderBase &builder,
 
   llvm::OpenMPIRBuilder::InsertPointTy allocaIP =
       findAllocaInsertPoint(builder, moduleTranslation);
-  parallelAllocaIP = allocaIP;
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
+  LLVM::ModuleTranslation::SaveStack<OpenMPParallelAllocaStackFrame> frame(
+        moduleTranslation, allocaIP);
 
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
       ompBuilder->createParallel(ompLoc, allocaIP, bodyGenCB, privCB, finiCB,
@@ -3116,7 +3137,8 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   if (!parallelOp) {
     return failure();
   }
-  llvm::OpenMPIRBuilder::InsertPointTy allocaIP = parallelAllocaIP;
+  llvm::OpenMPIRBuilder::InsertPointTy allocaIP =
+      findParallelAllocaIP(moduleTranslation);
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   llvm::ScanInfo *scanInfo = findScanInfo(moduleTranslation);
   llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterIP =
@@ -3244,17 +3266,17 @@ convertOmpLoopNest(Operation &opInst, llvm::IRBuilderBase &builder,
       llvm::Expected<llvm::ScanInfo *> res = ompBuilder->scanInfoInitialize();
       if (failed(handleError(res, *loopOp)))
         return failure();
-      llvm::ScanInfo *ScanInfo = res.get();
+      llvm::ScanInfo *scanInfo = res.get();
       moduleTranslation.stackWalk<OpenMPLoopInfoStackFrame>(
           [&](OpenMPLoopInfoStackFrame &frame) {
-            frame.ScanInfo = ScanInfo;
+            frame.scanInfo = scanInfo;
             return WalkResult::interrupt();
           });
       llvm::Expected<llvm::SmallVector<llvm::CanonicalLoopInfo *>>
           loopResults = ompBuilder->createCanonicalScanLoops(
               loc, bodyGen, lowerBound, upperBound, step,
               /*IsSigned=*/true, loopOp.getLoopInclusive(), computeIP, "loop",
-              ScanInfo);
+              scanInfo);
 
       if (failed(handleError(loopResults, *loopOp)))
         return failure();
