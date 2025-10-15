@@ -3174,21 +3174,25 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   // except for dependences for the list items specified in an inclusive or
   // exclusive clause.`). The argument of LoopNestOp need to be loaded again
   // after ScanOp again so mlir generated is valid.
-  auto parentOp = scanOp->getParentOp();
-  auto loopOp = cast<omp::LoopNestOp>(parentOp);
-  if (loopOp) {
-    auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin();
-    auto &ins = *(firstBlock.begin());
-    if (isa<LLVM::StoreOp>(ins)) {
-      LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
-      auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
-      if (src == moduleTranslation.lookupValue(
-                     (loopOp.getRegion().getArguments())[0])) {
-        auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
-        builder.CreateStore(src, dest);
-      }
-    }
-  }
+  //auto parentOp = scanOp->getParentOp();
+  //auto loopOp = cast<omp::LoopNestOp>(parentOp);
+  //if (loopOp) {
+  //  loopOp->dump();
+  //  auto val = moduleTranslation.lookupValue((loopOp.getLoopLowerBounds())[0]);
+  //  auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin();
+  //  auto &ins = *(firstBlock.begin());
+  //  if (isa<LLVM::StoreOp>(ins)) {
+  //    LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
+  //    auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
+  //    if (src == moduleTranslation.lookupValue(
+  //                   (loopOp.getRegion().getArguments())[0])) {
+  //      auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
+  //      builder.CreateStore(src, dest);
+  //    
+  //    }
+  //  }
+  //}
+  //(scanOp->getParentOfType<omp::WsloopOp>())->dump();
   return success();
 }
 

@@ -2326,12 +2326,30 @@ genParallelOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
 
 static mlir::omp::ScanOp
 genScanOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
-          semantics::SemanticsContext &semaCtx, mlir::Location loc,
+          semantics::SemanticsContext &semaCtx,
+          lower::pft::Evaluation &eval, mlir::Location loc,
           const ConstructQueue &queue, ConstructQueue::const_iterator item) {
   mlir::omp::ScanOperands clauseOps;
   genScanClauses(converter, semaCtx, item->clauses, loc, clauseOps);
-  return mlir::omp::ScanOp::create(converter.getFirOpBuilder(),
+  mlir::omp::ScanOp scanOp = mlir::omp::ScanOp::create(converter.getFirOpBuilder(),
                                    converter.getCurrentLocation(), clauseOps);
+  mlir::Operation *storeOp = nullptr;
+  lower::pft::Evaluation *doConstructEval = eval.parentConstruct;
+  lower::pft::Evaluation *doLoop =
+      &doConstructEval->getFirstNestedEvaluation();
+  auto *doStmt = doLoop->getIf<parser::NonLabelDoStmt>();
+  assert(doStmt && "Expected do loop to be in the nested evaluation");
+  const auto &loopControl =
+      std::get<std::optional<parser::LoopControl>>(doStmt->t);
+  const parser::LoopControl::Bounds *bounds =
+      std::get_if<parser::LoopControl::Bounds>(&loopControl->u);
+  mlir::omp::LoopNestOp loopNestOp = scanOp->getParentOfType<mlir::omp::LoopNestOp>();
+  mlir::Region &region = loopNestOp->getRegion(0);
+  mlir::Value indexVal = fir::getBase(region.getArgument(0));
+  storeOp = setLoopVar(converter, loc, indexVal, bounds->name.thing.symbol);
+  fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
+  firOpBuilder.setInsertionPointAfter(storeOp);
+  return scanOp;
 }
 
 static mlir::omp::SectionsOp
@@ -3416,7 +3434,7 @@ static void genOMPDispatch(lower::AbstractConverter &converter,
                                   loc, queue, item);
     break;
   case llvm::omp::Directive::OMPD_scan:
-    newOp = genScanOp(converter, symTable, semaCtx, loc, queue, item);
+    newOp = genScanOp(converter, symTable, semaCtx, eval, loc, queue, item);
     break;
   case llvm::omp::Directive::OMPD_section:
     llvm_unreachable("genOMPDispatch: OMPD_section");
