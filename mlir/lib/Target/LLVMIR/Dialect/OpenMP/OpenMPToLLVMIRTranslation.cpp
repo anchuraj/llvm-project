@@ -3148,51 +3148,6 @@ convertOmpScan(Operation &opInst, llvm::IRBuilderBase &builder,
   if (failed(handleError(afterIP, opInst)))
     return failure();
   builder.restoreIP(*afterIP);
-
-   //if(scanInfo->OMPFirstScanLoop) {
-   //  afterIP =
-   //      scanInfo->InputLoopScanSplitCode(
-   //          ompLoc.IP, isInclusive, llvmScanVars, llvmScanVarsType, scanInfo);
-   //  if (failed(handleError(afterIP, opInst)))
-   //    return failure();
-   //  builder.restoreIP(*afterIP);
-   //} else {
-   //  afterIP =
-   //      scanInfo->ScanLoopScanSplitCode(
-   //          ompLoc.IP, isInclusive, llvmScanVars, llvmScanVarsType, scanInfo);
-   //  if (failed(handleError(afterIP, opInst)))
-   //    return failure();
-
-   //  builder.restoreIP(*afterIP);
-   //}
-
-  // TODO: The argument of LoopnestOp is stored into the index variable and this
-  // variable is used across scan operation. However that makes the mlir
-  // invalid.(`Intra-iteration dependences from a statement in the structured
-  // block sequence that precede a scan directive to a statement in the
-  // structured block sequence that follows a scan directive must not exist,
-  // except for dependences for the list items specified in an inclusive or
-  // exclusive clause.`). The argument of LoopNestOp need to be loaded again
-  // after ScanOp again so mlir generated is valid.
-  //auto parentOp = scanOp->getParentOp();
-  //auto loopOp = cast<omp::LoopNestOp>(parentOp);
-  //if (loopOp) {
-  //  loopOp->dump();
-  //  auto val = moduleTranslation.lookupValue((loopOp.getLoopLowerBounds())[0]);
-  //  auto &firstBlock = *(scanOp->getParentRegion()->getBlocks()).begin();
-  //  auto &ins = *(firstBlock.begin());
-  //  if (isa<LLVM::StoreOp>(ins)) {
-  //    LLVM::StoreOp storeOp = dyn_cast<LLVM::StoreOp>(ins);
-  //    auto src = moduleTranslation.lookupValue(storeOp->getOperand(0));
-  //    if (src == moduleTranslation.lookupValue(
-  //                   (loopOp.getRegion().getArguments())[0])) {
-  //      auto dest = moduleTranslation.lookupValue(storeOp->getOperand(1));
-  //      builder.CreateStore(src, dest);
-  //    
-  //    }
-  //  }
-  //}
-  //(scanOp->getParentOfType<omp::WsloopOp>())->dump();
   return success();
 }
 
@@ -6412,6 +6367,8 @@ convertHostOrTargetOperation(Operation *op, llvm::IRBuilderBase &builder,
             return convertOmpWsloop(*op, builder, moduleTranslation);
           })
           .Case([&](omp::ScanOp) {
+            if (failed(checkImplementationStatus(*op)))
+              return failure();
             return convertOmpScan(*op, builder, moduleTranslation);
           })
           .Case([&](omp::SimdOp) {

@@ -2334,7 +2334,9 @@ genScanOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
   mlir::omp::ScanOp scanOp = mlir::omp::ScanOp::create(converter.getFirOpBuilder(),
                                    converter.getCurrentLocation(), clauseOps);
   mlir::Operation *storeOp = nullptr;
+  // TODO: If there are nested loops all indices should be copied after the scan construct.
   lower::pft::Evaluation *doConstructEval = eval.parentConstruct;
+  fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
   lower::pft::Evaluation *doLoop =
       &doConstructEval->getFirstNestedEvaluation();
   auto *doStmt = doLoop->getIf<parser::NonLabelDoStmt>();
@@ -2347,7 +2349,6 @@ genScanOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
   mlir::Region &region = loopNestOp->getRegion(0);
   mlir::Value indexVal = fir::getBase(region.getArgument(0));
   storeOp = setLoopVar(converter, loc, indexVal, bounds->name.thing.symbol);
-  fir::FirOpBuilder &firOpBuilder = converter.getFirOpBuilder();
   firOpBuilder.setInsertionPointAfter(storeOp);
   return scanOp;
 }
