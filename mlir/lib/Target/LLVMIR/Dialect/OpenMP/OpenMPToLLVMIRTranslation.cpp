@@ -2532,6 +2532,7 @@ convertOmpTaskwaitOp(omp::TaskwaitOp twOp, llvm::IRBuilderBase &builder,
 }
 
 /// Converts an OpenMP workshare loop into LLVM IR using OpenMPIRBuilder.
+/// need to read about omp linear and cancellation cb
 static LogicalResult
 convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
                  LLVM::ModuleTranslation &moduleTranslation) {
@@ -2573,8 +2574,8 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   if (handleError(afterAllocas, opInst).failed())
     return failure();
 
+  
   DenseMap<Value, llvm::Value *> reductionVariableMap;
-
   MutableArrayRef<BlockArgument> reductionArgs =
       cast<omp::BlockArgOpenMPOpInterface>(opInst).getReductionBlockArgs();
 
@@ -2623,6 +2624,15 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   pushCancelFinalizationCB(cancelTerminators, builder, *ompBuilder, wsloopOp,
                            llvm::omp::Directive::OMPD_for);
 
+  bool isInScanRegion =
+      wsloopOp.getReductionMod() && (wsloopOp.getReductionMod().value() ==
+                                     mlir::omp::ReductionModifier::inscan);
+
+  SmallVector<llvm::BranchInst *> scanTerminators;
+  if(isInScanRegion) {
+    pushCancelFinalizationCB(scanTerminators, builder, *ompBuilder, wsloopOp,
+                             llvm::omp::Directive::OMPD_for);
+  }
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
 
   // Initialize linear variables and linear step
@@ -2642,10 +2652,8 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
     return failure();
 
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos = findCurrentLoopInfos(moduleTranslation);
-  // Incase of Scan reduction, loopInfos can have two loopInfo
-  //llvm::CanonicalLoopInfo *loopInfo = findCurrentLoopInfos(moduleTranslation).front();
 
-  const auto &&wsloopCodeGen = [&](llvm::CanonicalLoopInfo *loopInfo) {
+  const auto &&wsloopCodeGen = [&](llvm::CanonicalLoopInfo *loopInfo, bool noLoopMode) {
     // Emit Initialization and Update IR for linear variables
     if (!wsloopOp.getLinearVars().empty()) {
       llvm::OpenMPIRBuilder::InsertPointOrErrorTy afterBarrierIP =
@@ -2667,7 +2675,7 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
             convertToScheduleKind(schedule), chunk, isSimd,
             scheduleMod == omp::ScheduleModifier::monotonic,
             scheduleMod == omp::ScheduleModifier::nonmonotonic, isOrdered,
-            workshareLoopType);
+            workshareLoopType, noLoopMode);
 
     if (failed(handleError(wsloopIP, opInst)))
       return failure();
@@ -2688,15 +2696,13 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
         linearClauseProcessor.rewriteInPlace(builder, "omp.loop_nest.region",
                                              index);
       builder.restoreIP(oldIP);
+      popCancelFinalizationCB(cancelTerminators, *ompBuilder, wsloopIP.get());
     }
 
     // Set the correct branch target for task cancellation
     return llvm::success();
   };
 
-  bool isInScanRegion =
-      wsloopOp.getReductionMod() && (wsloopOp.getReductionMod().value() ==
-                                     mlir::omp::ReductionModifier::inscan);
   if (isInScanRegion) {
     auto inputLoopFinishIp = loopInfos.front()->getAfterIP();
     builder.restoreIP(inputLoopFinishIp);
@@ -2741,12 +2747,11 @@ convertOmpWsloop(Operation &opInst, llvm::IRBuilderBase &builder,
   }
 
   for (llvm::CanonicalLoopInfo *loopInfo : loopInfos) {
-    if(failed(wsloopCodeGen(loopInfo)))
+    if(failed(wsloopCodeGen(loopInfo, noLoopMode)))
        return failure();
   }
 
   //todo: change builder.saveIP to wsLoopIP
-    popCancelFinalizationCB(cancelTerminators, *ompBuilder, builder.saveIP());
   if (isInScanRegion) {
     SmallVector<Region *> reductionRegions;
     llvm::transform(reductionDecls, std::back_inserter(reductionRegions),
