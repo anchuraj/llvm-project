@@ -817,6 +817,11 @@ void CodeGenAction::generateLLVMIR() {
           static_cast<llvm::PIELevel::Level>(opts.PICLevel));
   }
 
+  // Set !ThinLTO metadata
+  if (opts.PrepareForFullLTO) {
+    llvmModule->addModuleFlag(llvm::Module::Error, "ThinLTO", uint32_t(0));
+  }
+
   const TargetOptions &targetOpts = ci.getInvocation().getTargetOpts();
   const llvm::Triple triple(targetOpts.triple);
 
@@ -1019,11 +1024,11 @@ void CodeGenAction::runOptimizationPipeline(llvm::raw_pwrite_stream &os) {
 
   // Create the pass manager.
   llvm::ModulePassManager mpm;
+  bool emitSummary = opts.PrepareForThinLTO || opts.PrepareForFullLTO ||
+                     triple.getVendor() != llvm::Triple::Apple;
   if (opts.PrepareForFatLTO) {
     // The module summary should be emitted by default for regular LTO
     // except for ld64 targets.
-    bool emitSummary = opts.PrepareForThinLTO || opts.PrepareForFullLTO ||
-                       triple.getVendor() != llvm::Triple::Apple;
     mpm = pb.buildFatLTODefaultPipeline(level, opts.PrepareForThinLTO,
                                         emitSummary);
   } else if (opts.PrepareForFullLTO)
@@ -1034,9 +1039,9 @@ void CodeGenAction::runOptimizationPipeline(llvm::raw_pwrite_stream &os) {
     mpm = pb.buildPerModuleDefaultPipeline(level);
 
   if (action == BackendActionTy::Backend_EmitBC)
-    mpm.addPass(llvm::BitcodeWriterPass(os));
+    mpm.addPass(llvm::BitcodeWriterPass(os, false, emitSummary));
   else if (action == BackendActionTy::Backend_EmitLL)
-    mpm.addPass(llvm::PrintModulePass(os));
+    mpm.addPass(llvm::PrintModulePass(os, "", false, emitSummary));
 
   // FIXME: This should eventually be replaced by a first-class driver option.
   // This should be done for both flang and clang simultaneously.
